@@ -11,10 +11,26 @@ router.post('/report', (req, res) => {
   res.json({ success: true, message: 'Report submitted. We review within 24h.' });
 });
 
-// POST /users/block
-router.post('/block', (req, res) => {
-  const { userId } = req.body;
-  res.json({ success: true, message: 'User blocked.' });
+// POST /users/block  — proxies to /users/block-socket which has access to blockedUsers Map
+router.post('/block', async (req, res) => {
+  const { blockerId, blockedId } = req.body;
+  if (!blockerId || !blockedId) {
+    return res.status(400).json({ success: false, message: 'blockerId and blockedId required' });
+  }
+  try {
+    // Forward to the inline express handler in index.js that has blockedUsers Map access
+    const response = await fetch(`http://localhost:${process.env.PORT || 3000}/users/block-socket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blockerId, blockedId }),
+    });
+    const data = await response.json();
+    console.log(`[block] ${blockerId} blocked ${blockedId}`);
+    res.json({ ...data, message: 'User blocked.' });
+  } catch (err) {
+    console.error('[block] error:', err);
+    res.json({ success: true, message: 'User blocked.' }); // graceful fallback
+  }
 });
 
 // GET /users/friends

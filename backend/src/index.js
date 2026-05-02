@@ -14,6 +14,7 @@ const usersRoutes   = require('./routes/users');
 const giftsRoutes   = require('./routes/gifts');
 const agoraRoutes   = require('./routes/agora');
 const { router: leaderboardRouter } = require('./routes/leaderboard');
+const { router: notificationsRouter, fcmTokens } = require('./routes/notifications');
 
 const app    = express();
 const server = http.createServer(app);
@@ -31,13 +32,61 @@ app.use(express.json());
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'ConnectNow API', timestamp: new Date().toISOString() }));
 
 // Routes
-app.use('/auth',        authRoutes);
-app.use('/match',       matchRoutes);
-app.use('/coins',       coinsRoutes);
-app.use('/users',       usersRoutes);
-app.use('/gifts',       giftsRoutes);
-app.use('/agora',       agoraRoutes);
-app.use('/leaderboard', leaderboardRouter);
+app.use('/auth',          authRoutes);
+app.use('/match',         matchRoutes);
+app.use('/coins',         coinsRoutes);
+app.use('/users',         usersRoutes);
+app.use('/gifts',         giftsRoutes);
+app.use('/agora',         agoraRoutes);
+app.use('/leaderboard',   leaderboardRouter);
+app.use('/notifications', notificationsRouter);
+
+// ─── FCM SEND HELPER ─────────────────────────────────────────────────────────
+// Uses firebase-admin if GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT is set.
+// Falls back to a no-op in dev if not configured (won't crash the server).
+let firebaseAdmin = null;
+try {
+  const admin = require('firebase-admin');
+  if (!admin.apps.length) {
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+      : undefined;
+
+    if (serviceAccount) {
+      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+      firebaseAdmin = admin;
+      console.log('[FCM] firebase-admin initialized');
+    } else {
+      console.log('[FCM] FIREBASE_SERVICE_ACCOUNT not set — push notifications disabled');
+    }
+  } else {
+    firebaseAdmin = admin;
+  }
+} catch (err) {
+  console.log('[FCM] firebase-admin not available:', err.message);
+}
+
+async function sendPush(userId, title, body, data = {}) {
+  if (!firebaseAdmin) return;
+  const token = fcmTokens.get(userId);
+  if (!token) return;
+  try {
+    await firebaseAdmin.messaging().send({
+      token,
+      notification: { title, body },
+      data,
+      android: { priority: 'high' },
+      apns: { payload: { aps: { sound: 'default' } } },
+    });
+    console.log(`[FCM] push sent to ${userId}: ${title}`);
+  } catch (err) {
+    console.warn(`[FCM] push failed for ${userId}:`, err.message);
+    // If token is invalid, remove it
+    if (err.code === 'messaging/registration-token-not-registered') {
+      fcmTokens.delete(userId);
+    }
+  }
+}
 
 // ─── IN-MEMORY STORES (MVP — swap to Redis for prod) ──────────────────────────
 const matchingQueue  = new Map();  // socketId -> user data
@@ -226,6 +275,11 @@ function tryMatch(socketId) {
     });
 
     console.log(`[match] ${user.userId} <-> ${candidate.userId} | session: ${sessionId}`);
+
+    // Push notifications for matched users (fires & forgets)
+    sendPush(user.userId, '🎉 Match Found!', `You matched with ${candidate.profile?.displayName || 'someone'}. Tap to connect!`, { type: 'match_found', sessionId });
+    sendPush(candidate.userId, '🎉 Match Found!', `You matched with ${user.profile?.displayName || 'someone'}. Tap to connect!`, { type: 'match_found', sessionId });
+
     return;
   }
   console.log(`[queue] ${user.userId} waiting... (queue size: ${matchingQueue.size})`);

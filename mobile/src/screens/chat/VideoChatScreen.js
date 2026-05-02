@@ -287,12 +287,36 @@ export default function VideoChatScreen({ navigation }) {
     ]).start(() => setLatestGift(null));
   };
 
+  const handleBlock = () => {
+    if (!currentMatch?.id || !user?.uid) return;
+    Alert.alert(
+      'Block User',
+      'This person won\'t be matched with you again.',
+      [
+        {
+          text: 'Block & Skip',
+          style: 'destructive',
+          onPress: () => {
+            fetch(`${API_BASE_URL}/users/block`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ blockerId: user.uid, blockedId: currentMatch.id }),
+            }).catch(() => {});
+            handleSkip();
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   const handleReport = () => {
-    Alert.alert('Report User', 'What is the issue?', [
+    Alert.alert('Report or Block', 'Choose an action', [
       { text: 'Nudity / Sexual content', onPress: () => submitReport('nudity') },
       { text: 'Harassment', onPress: () => submitReport('harassment') },
       { text: 'Spam / Bot', onPress: () => submitReport('spam') },
       { text: 'Underage', onPress: () => submitReport('underage') },
+      { text: 'Block User', style: 'destructive', onPress: handleBlock },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };

@@ -2,10 +2,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 // Auth screens
 import SplashScreen from '../screens/auth/SplashScreen';
@@ -110,8 +111,56 @@ function MainTabs() {
   );
 }
 
+// ── In-app notification banner ─────────────────────────────────────────────
+function NotificationBanner({ notification, onDismiss }) {
+  if (!notification) return null;
+  return (
+    <TouchableOpacity
+      onPress={onDismiss}
+      style={bannerStyles.container}
+      activeOpacity={0.9}
+    >
+      <LinearGradient
+        colors={['rgba(124,58,237,0.95)', 'rgba(236,72,153,0.95)']}
+        style={bannerStyles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
+        <Text style={bannerStyles.title}>{notification.title}</Text>
+        {!!notification.body && (
+          <Text style={bannerStyles.body} numberOfLines={2}>{notification.body}</Text>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+const bannerStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 50,
+    left: 16,
+    right: 16,
+    zIndex: 9999,
+    borderRadius: 14,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  gradient: {
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  title: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  body:  { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
+});
+
 export default function AppNavigator() {
   const { isAuthenticated } = useAuthStore();
+  const { notification, dismissNotification } = usePushNotifications();
 
   return (
     <NavigationContainer>
@@ -135,6 +184,7 @@ export default function AppNavigator() {
           options={{ presentation: 'fullScreenModal' }}
         />
       </Stack.Navigator>
+      <NotificationBanner notification={notification} onDismiss={dismissNotification} />
     </NavigationContainer>
   );
 }

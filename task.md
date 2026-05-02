@@ -1,31 +1,34 @@
-# Phase 3 — Make it Pay
+# Report/Block + Push Notifications
 
-## Goal: Turn engagement into real revenue
+## PLAN
 
-### Tasks (in execution order)
+### A — Report/Block (complete the system)
+1. VideoChatScreen.js — add "Block" option alongside Report (already has report)
+2. backend/routes/users.js — block route needs to actually store blocked users + filter in matching
+3. backend/index.js — blockedUsers Map already exists, expose /users/block to update it
+4. ProfileScreen.js — no changes needed (report is video-only)
 
-1. [ ] `LiveStreamScreen.js` — full gifts tray, diamond earnings, live leaderboard
-2. [ ] `backend/src/routes/live.js` — new route: POST /live/gift (deduct coins, credit diamonds)  
-3. [ ] `backend/src/routes/gifts.js` — gift animation relay via socket
-4. [ ] `backend/src/server.js` — wire live gift socket events
-5. [ ] `store/authStore.js` — add `diamonds` field, `earnDiamonds(amount)` action
-6. [ ] `store/liveStore.js` — NEW: live stream state (viewers, gifts, diamonds earned)
-7. [ ] `screens/main/LeaderboardScreen.js` — real leaderboard from gift data (top gifters)
-8. [ ] `screens/store/CoinStoreScreen.js` — wire "Watch Ad for coins" button (AdMob stub with real UX)
-9. [ ] `screens/profile/ProfileScreen.js` — show diamond balance + "Cash Out" teaser
-10. [ ] `constants/index.js` — add DIAMOND_TO_COIN_RATE, AD_REWARD_COINS
-11. [ ] prebuild + commit + push
+### B — Push Notifications (FCM via @react-native-firebase/messaging)
+Firebase is already installed (@react-native-firebase/app + auth).
+Just need to add @react-native-firebase/messaging.
 
-## Decisions
-- Diamonds: earned by RECEIVING gifts. 1 gift = diamonds per gift.diamonds field (already in constants)
-- Diamonds not cashed out yet (future) — but shown on profile with "Cash Out (Coming Soon)" CTA
-- Live stream gifts use same GIFTS array as 1v1 gifts
-- Leaderboard: top 10 gifters this week, tracked in backend in-memory
-- Ad reward: 10 coins per ad watch — AdMob stub (real integration needs Google Play billing)
-- No Stripe/RevenueCat this phase (requires Apple Dev + Google Dev accounts) — mark IAP as "coming soon" in UI
+5. Install: @react-native-firebase/messaging
+6. app.json — add POST_NOTIFICATIONS permission + messaging plugin
+7. mobile/src/api/notifications.js — NEW: register device token, send local notif
+8. mobile/src/hooks/usePushNotifications.js — NEW: setup on app launch
+9. App.js (or root) — call usePushNotifications on mount
+10. backend/routes/notifications.js — NEW: store FCM tokens, send notifications
+11. backend/index.js — wire notifications route + emit push on match_found
 
-## NOT doing this phase (requires external accounts)
-- Stripe wiring (needs API keys)
-- RevenueCat (needs app store setup)
-- Google Play Billing (needs app in Play Store)
-- Firebase Blaze (needs billing enabled)
+### NOTIFICATION TYPES
+- Match found → "⚡ Match found! Tap to join" (wake app from background)  
+- Gift received → "🎁 @user sent you a Rose!" 
+- Daily bonus ready → "🎁 Your daily reward is ready!"
+- Follower online → "🔴 @user just went live!" (future — stub the handler)
+
+### DECISIONS
+- Use @react-native-firebase/messaging (not expo-notifications) — Firebase already in project, cleaner
+- Token stored on backend per userId (in-memory for MVP)
+- Notifications sent server-side via Firebase Admin SDK
+- Foreground notifications: show custom in-app banner (not system notification)
+- Background notifications: system tray via FCM
