@@ -5,13 +5,17 @@
   "build": {
     "preview": {
       "android": {
-        "buildType": "apk"
-      }
+        "buildType": "apk",
+        "credentialsSource": "local"
+      },
+      "prebuildCommand": "npx expo prebuild --clean"
     },
     "production": {
       "android": {
-        "buildType": "app-bundle"
-      }
+        "buildType": "app-bundle",
+        "credentialsSource": "local"
+      },
+      "prebuildCommand": "npx expo prebuild --clean"
     }
   },
   "submit": {
