@@ -8,6 +8,8 @@ import * as Location from 'expo-location';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useBonusStore } from '../../store/bonusStore';
+import DailyBonusModal from '../../components/DailyBonusModal';
 
 const { width } = Dimensions.get('window');
 
@@ -40,14 +42,22 @@ const GENDER_COST = 9; // coins to filter by gender
 export default function HomeScreen({ navigation }) {
   const { user, addCoins, spendCoins } = useAuthStore();
   const { genderFilter, countryFilter, setGenderFilter, setCountryFilter } = useChatStore();
+  const { loadBonus, shouldShowPopup, markShown } = useBonusStore();
   const [pulseAnim] = useState(new Animated.Value(1));
   const [onlineCount] = useState(Math.floor(Math.random() * 3000) + 8000);
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
-  const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [showBonusModal, setShowBonusModal] = useState(false);
 
   useEffect(() => {
     requestLocationPermission();
+    // Load bonus state then auto-show popup
+    loadBonus().then(() => {
+      if (shouldShowPopup()) {
+        setShowBonusModal(true);
+        markShown();
+      }
+    });
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
@@ -114,16 +124,6 @@ export default function HomeScreen({ navigation }) {
     }
     setGenderFilter(code);
     setShowGenderModal(false);
-  };
-
-  const handleClaimBonus = () => {
-    if (dailyClaimed) {
-      Alert.alert('Already claimed', 'Come back tomorrow for your next bonus!');
-      return;
-    }
-    addCoins(50);
-    setDailyClaimed(true);
-    Alert.alert('🎁 Bonus claimed!', 'You received 50 free coins!');
   };
 
   const selectedCountry = COUNTRIES.find(c => c.code === countryFilter) || COUNTRIES[0];
@@ -212,18 +212,26 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {/* Daily bonus */}
-        <View style={[styles.bonusCard, dailyClaimed && styles.bonusCardClaimed]}>
-          <Text style={styles.bonusIcon}>{dailyClaimed ? '✅' : '🎁'}</Text>
+        <TouchableOpacity
+          style={styles.bonusCard}
+          onPress={() => setShowBonusModal(true)}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['rgba(245,158,11,0.12)', 'rgba(124,58,237,0.12)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Text style={styles.bonusIcon}>🎁</Text>
           <View style={styles.bonusContent}>
-            <Text style={styles.bonusTitle}>{dailyClaimed ? 'Bonus Claimed!' : 'Daily Bonus Available!'}</Text>
-            <Text style={styles.bonusSub}>{dailyClaimed ? 'Come back tomorrow' : 'Claim 50 free coins today'}</Text>
+            <Text style={styles.bonusTitle}>Daily Login Reward</Text>
+            <Text style={styles.bonusSub}>Log in every day — earn up to 500🪙</Text>
           </View>
-          {!dailyClaimed && (
-            <TouchableOpacity style={styles.bonusClaim} onPress={handleClaimBonus}>
-              <Text style={styles.bonusClaimText}>Claim</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+          <View style={styles.bonusClaim}>
+            <Text style={styles.bonusClaimText}>Open →</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Quick actions */}
         <View style={styles.section}>
@@ -280,6 +288,12 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Daily bonus modal */}
+      <DailyBonusModal
+        visible={showBonusModal}
+        onClose={() => setShowBonusModal(false)}
+      />
 
       {/* Gender modal */}
       <Modal visible={showGenderModal} transparent animationType="slide">
@@ -353,14 +367,13 @@ const styles = StyleSheet.create({
   vipBannerTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
   vipBannerSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   vipBannerArrow: { color: colors.primary, fontSize: 18, fontWeight: '700' },
-  bonusCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: colors.backgroundSecondary, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', gap: 12 },
-  bonusCardClaimed: { opacity: 0.6 },
+  bonusCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: colors.backgroundSecondary, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', gap: 12, overflow: 'hidden' },
   bonusIcon: { fontSize: 28 },
   bonusContent: { flex: 1 },
   bonusTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
   bonusSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  bonusClaim: { backgroundColor: colors.success, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  bonusClaimText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  bonusClaim: { backgroundColor: 'rgba(124,58,237,0.3)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' },
+  bonusClaimText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   section: { paddingHorizontal: 20, marginBottom: 24 },
   sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '700', marginBottom: 14 },
   quickActions: { flexDirection: 'row', gap: 12 },
