@@ -11,6 +11,7 @@ const matchRoutes = require('./routes/matching');
 const coinsRoutes = require('./routes/coins');
 const usersRoutes = require('./routes/users');
 const giftsRoutes = require('./routes/gifts');
+const agoraRoutes = require('./routes/agora');
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +36,7 @@ app.use('/match', matchRoutes);
 app.use('/coins', coinsRoutes);
 app.use('/users', usersRoutes);
 app.use('/gifts', giftsRoutes);
+app.use('/agora', agoraRoutes);
 
 // Matching queue (in-memory for MVP — use Redis in production)
 const matchingQueue = new Map(); // socketId -> { userId, filters, socket }

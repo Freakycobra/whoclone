@@ -1,6 +1,6 @@
 // API
 export const API_BASE_URL = 'https://api.connectnow.app'; // replace with your deployed backend
-export const AGORA_APP_ID = 'YOUR_AGORA_APP_ID'; // get from agora.io
+export const AGORA_APP_ID = '69107017812e4c81bfa122c70d2b0750';
 
 // Coin packages with PPP pricing by country
 export const COIN_PACKS = {
