@@ -16,6 +16,8 @@ import AgeVerificationScreen from '../screens/auth/AgeVerificationScreen';
 
 // Main screens
 import HomeScreen from '../screens/main/HomeScreen';
+import DiscoverScreenMain from '../screens/main/DiscoverScreen';
+import LeaderboardScreenMain from '../screens/main/LeaderboardScreen';
 import PremiumScreen from '../screens/main/PremiumScreen';
 
 // Chat
@@ -91,23 +93,7 @@ function TabBar({ state, descriptors, navigation }) {
   );
 }
 
-function DiscoverScreen() {
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Discover 🔍</Text>
-      <Text style={{ color: colors.textSecondary, marginTop: 8 }}>Coming in Phase 2</Text>
-    </View>
-  );
-}
 
-function LeaderboardScreen() {
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Leaderboard 🏆</Text>
-      <Text style={{ color: colors.textSecondary, marginTop: 8 }}>Coming in Phase 2</Text>
-    </View>
-  );
-}
 
 function MainTabs() {
   return (
@@ -116,9 +102,9 @@ function MainTabs() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Discover" component={DiscoverScreen} />
+      <Tab.Screen name="Discover" component={DiscoverScreenMain} />
       <Tab.Screen name="VideoChat" component={VideoChatScreen} />
-      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreenMain} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

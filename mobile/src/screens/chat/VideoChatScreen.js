@@ -51,18 +51,21 @@ export default function VideoChatScreen({ navigation }) {
   const [searchDots, setSearchDots] = useState('');
   const [remoteUid, setRemoteUid] = useState(null);
   const [agoraReady, setAgoraReady] = useState(false);
+  const [timesUpVisible, setTimesUpVisible] = useState(false);
 
   const searchFadeAnim = useRef(new Animated.Value(0)).current;
   const timerRef = useRef(null);
   const dotsRef = useRef(null);
   const engineRef = useRef(null);
   const sessionIdRef = useRef(null);
+  const genderTimerRef = useRef(null);
 
   useEffect(() => {
     startSearching();
     return () => {
       clearInterval(timerRef.current);
       clearInterval(dotsRef.current);
+      clearTimeout(genderTimerRef.current);
       leaveAgoraChannel();
       disconnect();
     };
@@ -147,11 +150,24 @@ export default function VideoChatScreen({ navigation }) {
       timerRef.current = setInterval(() => {
         setSessionDuration(d => d + 1);
       }, 1000);
+
+      // Gender filter: session limited to 20-30s, then auto-skip
+      if (genderFilter) {
+        const limit = 20000 + Math.random() * 10000; // 20–30s
+        genderTimerRef.current = setTimeout(() => {
+          setTimesUpVisible(true);
+          setTimeout(() => {
+            setTimesUpVisible(false);
+            handleSkip();
+          }, 2000);
+        }, limit);
+      }
     }, delay);
   };
 
   const handleSkip = async () => {
     clearInterval(timerRef.current);
+    clearTimeout(genderTimerRef.current);
     await leaveAgoraChannel();
     try { await matchingAPI.skipMatch(sessionIdRef.current); } catch (e) {}
     disconnect();
@@ -160,6 +176,7 @@ export default function VideoChatScreen({ navigation }) {
 
   const handleEnd = async () => {
     clearInterval(timerRef.current);
+    clearTimeout(genderTimerRef.current);
     await leaveAgoraChannel();
     disconnect();
     setShowRatingModal(true);
@@ -382,6 +399,17 @@ export default function VideoChatScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
+      {/* Time's up overlay (gender filter session limit) */}
+      {timesUpVisible && (
+        <View style={styles.timesUpOverlay}>
+          <LinearGradient colors={['rgba(124,58,237,0.92)', 'rgba(236,72,153,0.92)']} style={styles.timesUpCard}>
+            <Text style={styles.timesUpEmoji}>⏱</Text>
+            <Text style={styles.timesUpTitle}>Time's Up!</Text>
+            <Text style={styles.timesUpSub}>Finding next match...</Text>
+          </LinearGradient>
+        </View>
+      )}
+
       {/* Rating modal */}
       {showRatingModal && (
         <View style={styles.ratingModal}>
@@ -479,4 +507,9 @@ const styles = StyleSheet.create({
   ratingStar: { fontSize: 40 },
   skipRating: { padding: 12 },
   skipRatingText: { color: colors.textMuted, fontSize: 14 },
+  timesUpOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  timesUpCard: { borderRadius: 24, paddingHorizontal: 48, paddingVertical: 32, alignItems: 'center' },
+  timesUpEmoji: { fontSize: 56, marginBottom: 8 },
+  timesUpTitle: { color: '#fff', fontSize: 28, fontWeight: '900', marginBottom: 6 },
+  timesUpSub: { color: 'rgba(255,255,255,0.75)', fontSize: 15 },
 });

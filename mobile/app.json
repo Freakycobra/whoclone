@@ -51,6 +51,12 @@
         {
           "microphonePermission": "Allow ConnectNow to access your microphone for video chat."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow ConnectNow to use your location for country-based matching."
+        }
       ]
     ],
     "extra": {

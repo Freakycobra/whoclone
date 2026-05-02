@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Dimensions, Animated, Modal, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
@@ -22,6 +23,10 @@ const COUNTRIES = [
   { code: 'SA', label: 'Saudi Arabia', flag: '🇸🇦' },
   { code: 'US', label: 'USA', flag: '🇺🇸' },
   { code: 'GB', label: 'UK', flag: '🇬🇧' },
+  { code: 'EG', label: 'Egypt', flag: '🇪🇬' },
+  { code: 'NG', label: 'Nigeria', flag: '🇳🇬' },
+  { code: 'BR', label: 'Brazil', flag: '🇧🇷' },
+  { code: 'MX', label: 'Mexico', flag: '🇲🇽' },
 ];
 
 const GENDERS = [
@@ -30,8 +35,10 @@ const GENDERS = [
   { code: 'female', label: 'Female', icon: '👩' },
 ];
 
+const GENDER_COST = 9; // coins to filter by gender
+
 export default function HomeScreen({ navigation }) {
-  const { user, addCoins } = useAuthStore();
+  const { user, addCoins, spendCoins } = useAuthStore();
   const { genderFilter, countryFilter, setGenderFilter, setCountryFilter } = useChatStore();
   const [pulseAnim] = useState(new Animated.Value(1));
   const [onlineCount] = useState(Math.floor(Math.random() * 3000) + 8000);
@@ -40,6 +47,7 @@ export default function HomeScreen({ navigation }) {
   const [dailyClaimed, setDailyClaimed] = useState(false);
 
   useEffect(() => {
+    requestLocationPermission();
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
@@ -50,18 +58,62 @@ export default function HomeScreen({ navigation }) {
     return () => pulse.stop();
   }, []);
 
-  const handleStartMatch = () => navigation.navigate('VideoChat');
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        // Location available — can use for nearby features
+      }
+    } catch (e) {}
+  };
 
-  const handleFilterPress = (type) => {
+  const handleGenderFilterPress = () => {
+    if (user?.isVip) {
+      setShowGenderModal(true);
+      return;
+    }
+    // Not VIP — show coin option
+    Alert.alert(
+      'Filter by Gender',
+      `Match with a specific gender for ${GENDER_COST} coins per session.\n\nOr get VIP for unlimited gender filter!`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: `Use ${GENDER_COST} 🪙 coins`,
+          onPress: () => {
+            if ((user?.coins || 0) < GENDER_COST) {
+              Alert.alert('Not enough coins', 'Buy more coins to use gender filter.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Buy Coins', onPress: () => navigation.navigate('CoinStore') },
+              ]);
+              return;
+            }
+            setShowGenderModal(true);
+          },
+        },
+        { text: '👑 Get VIP', onPress: () => navigation.navigate('Premium') },
+      ]
+    );
+  };
+
+  const handleCountryFilterPress = () => {
     if (!user?.isVip) {
-      Alert.alert('VIP Feature', 'Upgrade to VIP to use filters!', [
+      Alert.alert('VIP Feature', 'Country filter is exclusive to VIP members.', [
         { text: 'Later', style: 'cancel' },
-        { text: 'Get VIP', onPress: () => navigation.navigate('Premium') },
+        { text: '👑 Get VIP', onPress: () => navigation.navigate('Premium') },
       ]);
       return;
     }
-    if (type === 'country') setShowCountryModal(true);
-    else setShowGenderModal(true);
+    setShowCountryModal(true);
+  };
+
+  const handleSelectGender = (code) => {
+    // Spend coins if not VIP
+    if (!user?.isVip && code !== null) {
+      spendCoins(GENDER_COST);
+    }
+    setGenderFilter(code);
+    setShowGenderModal(false);
   };
 
   const handleClaimBonus = () => {
@@ -106,7 +158,7 @@ export default function HomeScreen({ navigation }) {
         {/* START button */}
         <View style={styles.startSection}>
           <Animated.View style={[styles.glowRing, { transform: [{ scale: pulseAnim }] }]}>
-            <TouchableOpacity onPress={handleStartMatch} activeOpacity={0.9}>
+            <TouchableOpacity onPress={() => navigation.navigate('VideoChat')} activeOpacity={0.9}>
               <LinearGradient
                 colors={['#7C3AED', '#EC4899']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -123,16 +175,16 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.filtersRow}>
             <TouchableOpacity
               style={[styles.filterChip, genderFilter && styles.filterChipActive]}
-              onPress={() => handleFilterPress('gender')}
+              onPress={handleGenderFilterPress}
             >
               <Text style={styles.filterIcon}>{selectedGender.icon}</Text>
               <Text style={styles.filterText}>{selectedGender.label}</Text>
-              {!user?.isVip && <Text style={styles.vipLock}>👑</Text>}
+              {!user?.isVip && <Text style={styles.filterCost}>9🪙</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.filterChip, countryFilter && styles.filterChipActive]}
-              onPress={() => handleFilterPress('country')}
+              onPress={handleCountryFilterPress}
             >
               <Text style={styles.filterIcon}>{selectedCountry.flag}</Text>
               <Text style={styles.filterText}>{selectedCountry.label}</Text>
@@ -152,7 +204,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.vipBannerIcon}>👑</Text>
               <View style={styles.vipBannerContent}>
                 <Text style={styles.vipBannerTitle}>Upgrade to VIP</Text>
-                <Text style={styles.vipBannerSub}>Gender filter · No ads · 3x faster matching</Text>
+                <Text style={styles.vipBannerSub}>Gender filter · Country filter · No ads</Text>
               </View>
               <Text style={styles.vipBannerArrow}>→</Text>
             </LinearGradient>
@@ -204,7 +256,7 @@ export default function HomeScreen({ navigation }) {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Country filter modal */}
+      {/* Country modal */}
       <Modal visible={showCountryModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -217,9 +269,7 @@ export default function HomeScreen({ navigation }) {
                   onPress={() => { setCountryFilter(c.code); setShowCountryModal(false); }}
                 >
                   <Text style={styles.modalItemFlag}>{c.flag}</Text>
-                  <Text style={[styles.modalItemLabel, countryFilter === c.code && styles.modalItemLabelActive]}>
-                    {c.label}
-                  </Text>
+                  <Text style={[styles.modalItemLabel, countryFilter === c.code && styles.modalItemLabelActive]}>{c.label}</Text>
                   {countryFilter === c.code && <Text style={styles.modalCheck}>✓</Text>}
                 </TouchableOpacity>
               ))}
@@ -231,21 +281,25 @@ export default function HomeScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Gender filter modal */}
+      {/* Gender modal */}
       <Modal visible={showGenderModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Select Gender</Text>
+            {!user?.isVip && (
+              <View style={styles.coinNote}>
+                <Text style={styles.coinNoteText}>⚠️ Selecting Male/Female costs {GENDER_COST} coins per session</Text>
+              </View>
+            )}
             {GENDERS.map((g) => (
               <TouchableOpacity
                 key={g.code || 'any'}
                 style={[styles.modalItem, genderFilter === g.code && styles.modalItemActive]}
-                onPress={() => { setGenderFilter(g.code); setShowGenderModal(false); }}
+                onPress={() => handleSelectGender(g.code)}
               >
                 <Text style={styles.modalItemFlag}>{g.icon}</Text>
-                <Text style={[styles.modalItemLabel, genderFilter === g.code && styles.modalItemLabelActive]}>
-                  {g.label}
-                </Text>
+                <Text style={[styles.modalItemLabel, genderFilter === g.code && styles.modalItemLabelActive]}>{g.label}</Text>
+                {g.code !== null && !user?.isVip && <Text style={styles.coinCost}>9🪙</Text>}
                 {genderFilter === g.code && <Text style={styles.modalCheck}>✓</Text>}
               </TouchableOpacity>
             ))}
@@ -268,18 +322,10 @@ function getTimeOfDay() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
   greeting: { color: colors.textSecondary, fontSize: 13 },
   username: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  coinBadge: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', gap: 6,
-  },
+  coinBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.backgroundSecondary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', gap: 6 },
   coinIcon: { fontSize: 16 },
   coinAmount: { color: colors.gold, fontWeight: '700', fontSize: 14 },
   coinPlus: { color: colors.primary, fontWeight: '700', fontSize: 16 },
@@ -288,44 +334,26 @@ const styles = StyleSheet.create({
   onlineText: { color: colors.textSecondary, fontSize: 13 },
   onlineCount: { color: colors.success, fontWeight: '700' },
   startSection: { alignItems: 'center', marginBottom: 32, paddingHorizontal: 20 },
-  glowRing: {
-    width: 180, height: 180, borderRadius: 90,
-    backgroundColor: 'rgba(124,58,237,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 24, borderWidth: 2, borderColor: 'rgba(124,58,237,0.3)',
-  },
+  glowRing: { width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(124,58,237,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 2, borderColor: 'rgba(124,58,237,0.3)' },
   startButton: { width: 150, height: 150, borderRadius: 75, alignItems: 'center', justifyContent: 'center' },
   startEmoji: { fontSize: 36, marginBottom: 4 },
   startText: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 2 },
   startSubText: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
   filtersRow: { flexDirection: 'row', gap: 12 },
-  filterChip: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: colors.cardBorder, gap: 6,
-  },
+  filterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.backgroundSecondary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.cardBorder, gap: 6 },
   filterChipActive: { borderColor: colors.primary, backgroundColor: 'rgba(124,58,237,0.15)' },
   filterIcon: { fontSize: 14 },
   filterText: { color: colors.textSecondary, fontSize: 13 },
+  filterCost: { color: colors.gold, fontSize: 11, fontWeight: '700' },
   vipLock: { fontSize: 12 },
   vipBanner: { marginHorizontal: 20, marginBottom: 16, borderRadius: 16, overflow: 'hidden' },
-  vipBannerGradient: {
-    flexDirection: 'row', alignItems: 'center', padding: 16,
-    borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)', borderRadius: 16, gap: 12,
-  },
+  vipBannerGradient: { flexDirection: 'row', alignItems: 'center', padding: 16, borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)', borderRadius: 16, gap: 12 },
   vipBannerIcon: { fontSize: 28 },
   vipBannerContent: { flex: 1 },
   vipBannerTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
   vipBannerSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   vipBannerArrow: { color: colors.primary, fontSize: 18, fontWeight: '700' },
-  bonusCard: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 20, marginBottom: 24,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', gap: 12,
-  },
+  bonusCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: colors.backgroundSecondary, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', gap: 12 },
   bonusCardClaimed: { opacity: 0.6 },
   bonusIcon: { fontSize: 28 },
   bonusContent: { flex: 1 },
@@ -341,22 +369,17 @@ const styles = StyleSheet.create({
   qaIcon: { fontSize: 28, marginBottom: 8 },
   qaTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 2 },
   qaSub: { color: colors.textSecondary, fontSize: 11 },
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: '#16161F', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, maxHeight: '70%',
-  },
+  modalCard: { backgroundColor: '#16161F', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '75%' },
   modalTitle: { color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
-  modalItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 12, marginBottom: 8,
-    backgroundColor: colors.backgroundSecondary,
-  },
+  coinNote: { backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
+  coinNoteText: { color: colors.gold, fontSize: 12, textAlign: 'center' },
+  modalItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, marginBottom: 8, backgroundColor: colors.backgroundSecondary },
   modalItemActive: { backgroundColor: 'rgba(124,58,237,0.2)', borderWidth: 1, borderColor: colors.primary },
   modalItemFlag: { fontSize: 22 },
   modalItemLabel: { flex: 1, color: colors.textSecondary, fontSize: 15 },
   modalItemLabelActive: { color: '#fff', fontWeight: '600' },
+  coinCost: { color: colors.gold, fontSize: 12, fontWeight: '700' },
   modalCheck: { color: colors.primary, fontSize: 18, fontWeight: '700' },
   modalClose: { marginTop: 8, padding: 16, alignItems: 'center' },
   modalCloseText: { color: colors.textMuted, fontSize: 15 },
