@@ -1,5 +1,5 @@
 // API
-export const API_BASE_URL = 'https://api.connectnow.app'; // replace with your deployed backend
+export const API_BASE_URL = 'https://backend-production-61e9.up.railway.app'; // replace with your deployed backend
 export const AGORA_APP_ID = '69107017812e4c81bfa122c70d2b0750';
 
 // Coin packages with PPP pricing by country
