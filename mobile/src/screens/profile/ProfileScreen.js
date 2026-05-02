@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
+import { useFollowStore } from '../../store/followStore';
+import { INTERESTS } from '../../constants';
 
 const CLOUDINARY_CLOUD_NAME = 'daezgfr8k';
 const CLOUDINARY_UPLOAD_PRESET = 'connectnow_profiles';
@@ -26,10 +28,15 @@ async function uploadToCloudinary(uri) {
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout, updateUser } = useAuthStore();
+  const { following, followers } = useFollowStore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(user?.displayName || '');
   const [editBio, setEditBio] = useState(user?.bio || '');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const interestItems = (user?.interests || [])
+    .map(id => INTERESTS.find(i => i.id === id))
+    .filter(Boolean);
 
   const genderEmoji = { male: '👨', female: '👩', nonbinary: '🧑' };
 
@@ -131,6 +138,18 @@ export default function ProfileScreen({ navigation }) {
           </Text>
           {user?.bio ? <Text style={styles.userBio}>{user.bio}</Text> : null}
 
+          {/* Interest tags */}
+          {interestItems.length > 0 && (
+            <View style={styles.interestRow}>
+              {interestItems.map(item => (
+                <View key={item.id} style={styles.interestChip}>
+                  <Text style={styles.interestEmoji}>{item.emoji}</Text>
+                  <Text style={styles.interestLabel}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Stats */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -144,8 +163,13 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>👥 {user?.friends || 0}</Text>
-              <Text style={styles.statLabel}>Friends</Text>
+              <Text style={styles.statValue}>{followers?.size || 0}</Text>
+              <Text style={styles.statLabel}>Followers</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{following?.size || 0}</Text>
+              <Text style={styles.statLabel}>Following</Text>
             </View>
           </View>
 
@@ -305,6 +329,10 @@ const styles = StyleSheet.create({
   logoutBtn: { marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', borderRadius: 16, padding: 16, alignItems: 'center' },
   logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
   version: { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginBottom: 8 },
+  interestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 12 },
+  interestChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(124,58,237,0.15)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' },
+  interestEmoji: { fontSize: 13, marginRight: 4 },
+  interestLabel: { color: colors.primary, fontSize: 12, fontWeight: '600' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#16161F', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },

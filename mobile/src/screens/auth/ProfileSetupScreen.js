@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { authAPI } from '../../api/auth';
+import { INTERESTS } from '../../constants';
 
 const CLOUDINARY_CLOUD_NAME = 'daezgfr8k';
 const CLOUDINARY_UPLOAD_PRESET = 'connectnow_profiles';
@@ -53,7 +54,19 @@ export default function ProfileSetupScreen({ navigation }) {
   const [photoUrl, setPhotoUrl] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const { updateUser } = useAuthStore();
+
+  const toggleInterest = (id) => {
+    setSelectedInterests(prev => {
+      if (prev.includes(id)) return prev.filter(i => i !== id);
+      if (prev.length >= 5) {
+        Alert.alert('Max 5 interests', 'Remove one before adding another.');
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
 
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -95,6 +108,10 @@ export default function ProfileSetupScreen({ navigation }) {
       Alert.alert('Required', 'Please select your gender');
       return;
     }
+    if (selectedInterests.length < 3) {
+      Alert.alert('Pick your interests', 'Select at least 3 interests so we can find better matches!');
+      return;
+    }
     setLoading(true);
     try {
       const res = await authAPI.setupProfile({
@@ -103,11 +120,12 @@ export default function ProfileSetupScreen({ navigation }) {
         age,
         bio,
         photoUrl: photoUrl || null,
+        interests: selectedInterests,
       });
       updateUser(res.data.user);
     } catch (err) {
       // Backend may not be configured yet — update local state
-      updateUser({ displayName, gender, age, bio, photoUrl, coins: 100, diamonds: 0, isVip: false });
+      updateUser({ displayName, gender, age, bio, photoUrl, interests: selectedInterests, coins: 100, diamonds: 0, isVip: false });
     } finally {
       setLoading(false);
       navigation.replace('AgeVerification');
@@ -208,6 +226,30 @@ export default function ProfileSetupScreen({ navigation }) {
             maxLength={100}
             multiline
           />
+        </View>
+
+        {/* Interests */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Your Interests</Text>
+          <Text style={styles.fieldHint2}>Pick 3–5 to find better matches</Text>
+          <View style={styles.interestsGrid}>
+            {INTERESTS.map((item) => {
+              const active = selectedInterests.includes(item.id);
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.interestChip, active && styles.interestChipActive]}
+                  onPress={() => toggleInterest(item.id)}
+                >
+                  <Text style={styles.interestEmoji}>{item.emoji}</Text>
+                  <Text style={[styles.interestLabel, active && styles.interestLabelActive]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={styles.interestCount}>{selectedInterests.length}/5 selected</Text>
         </View>
 
         {/* CTA */}
@@ -316,4 +358,22 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginTop: 8,
   },
   ctaText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  fieldHint2: { color: colors.textMuted, fontSize: 12, marginBottom: 12 },
+  interestsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  interestChip: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1.5,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.backgroundSecondary,
+    marginBottom: 4,
+  },
+  interestChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(124,58,237,0.18)',
+  },
+  interestEmoji: { fontSize: 16, marginRight: 6 },
+  interestLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  interestLabelActive: { color: colors.primary },
+  interestCount: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'right' },
 });

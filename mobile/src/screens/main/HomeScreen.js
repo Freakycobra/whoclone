@@ -119,10 +119,10 @@ export default function HomeScreen({ navigation }) {
     setShowCountryModal(true);
   };
 
-  const handleSelectGender = (code) => {
+  const handleSelectGender = async (code) => {
     // Spend coins if not VIP
     if (!user?.isVip && code !== null) {
-      spendCoins(GENDER_COST);
+      await spendCoins(GENDER_COST);
     }
     setGenderFilter(code);
     setShowGenderModal(false);

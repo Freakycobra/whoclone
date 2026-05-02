@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity,
+  View, Text, StyleSheet, Modal, TouchableOpacity, Alert,
   Animated, ScrollView, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,9 +14,11 @@ const DAY_REWARDS = [50, 100, 150, 200, 250, 300, 500];
 
 const DAY_ICONS = ['🌟', '💫', '⚡', '🔥', '💎', '👑', '🎰'];
 
+const STREAK_FREEZE_COST = 99;
+
 export default function DailyBonusModal({ visible, onClose }) {
-  const { currentDay, claimBonus, isClaimedToday } = useBonusStore();
-  const { addCoins } = useAuthStore();
+  const { currentDay, claimBonus, isClaimedToday, streak, streakFreezeCount, buyStreakFreeze } = useBonusStore();
+  const { addCoins, spendCoins } = useAuthStore();
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const coinAnim = useRef(new Animated.Value(0)).current;
@@ -79,6 +81,11 @@ export default function DailyBonusModal({ visible, onClose }) {
             style={styles.header}
           >
             <View style={styles.headerGlow} />
+            {streak > 1 && (
+              <View style={styles.streakBadge}>
+                <Text style={styles.streakText}>🔥 {streak} day streak!</Text>
+              </View>
+            )}
             <Text style={styles.headerEmoji}>🎁</Text>
             <Text style={styles.headerTitle}>Daily Login Reward</Text>
             <Text style={styles.headerSub}>Log in every day for bigger rewards!</Text>
@@ -171,6 +178,27 @@ export default function DailyBonusModal({ visible, onClose }) {
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
+            )}
+
+            {/* Streak freeze purchase */}
+            {streak > 2 && (
+              <TouchableOpacity
+                style={styles.freezeBtn}
+                onPress={async () => {
+                  const { user } = useAuthStore.getState();
+                  if ((user?.coins || 0) < STREAK_FREEZE_COST) {
+                    Alert.alert('Not enough coins', `Streak Freeze costs ${STREAK_FREEZE_COST} coins.`);
+                    return;
+                  }
+                  await spendCoins(STREAK_FREEZE_COST);
+                  await buyStreakFreeze();
+                  Alert.alert('❄️ Streak Freeze!', `You now have ${streakFreezeCount + 1} freeze(s). Your streak is protected for 1 missed day.`);
+                }}
+              >
+                <Text style={styles.freezeBtnText}>
+                  ❄️ Freeze Streak ({STREAK_FREEZE_COST}🪙) {streakFreezeCount > 0 ? `· ${streakFreezeCount} active` : ''}
+                </Text>
+              </TouchableOpacity>
             )}
 
             <TouchableOpacity onPress={onClose} style={styles.skipBtn}>
@@ -326,4 +354,27 @@ const styles = StyleSheet.create({
 
   skipBtn: { padding: 12, alignItems: 'center' },
   skipText: { color: colors.textMuted, fontSize: 14 },
+
+  streakBadge: {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.4)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 10,
+    alignSelf: 'center',
+  },
+  streakText: { color: '#F59E0B', fontSize: 15, fontWeight: '800' },
+
+  freezeBtn: {
+    backgroundColor: 'rgba(59,130,246,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.35)',
+    borderRadius: 12,
+    padding: 11,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  freezeBtnText: { color: '#93C5FD', fontSize: 13, fontWeight: '700' },
 });

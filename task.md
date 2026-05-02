@@ -1,45 +1,60 @@
 # ConnectNow — Implementation Tracker
 
 ## STATUS KEY
-- [x] Done
-- [~] In progress
-- [ ] Todo
+- [x] Done  |  [~] In progress  |  [ ] Todo
 
-## PHASE 1 — Make It Real (current sprint)
+## PHASE 1 — COMPLETE ✅
+- [x] Real Socket.IO matching
+- [x] Real Agora tokens from backend
+- [x] Server-side coin validation
+- [x] Super Match button (99 coins)
+- [x] Gift animations + socket relay
+- [x] Report/Block system
 
-### Step 1: Real Socket.IO Matching (backend already ready)
-- [x] Backend socket events exist (join_queue, match_found, skip_match, end_match)
-- [ ] Mobile: install socket.io-client
-- [ ] Mobile: create socketService.js (singleton socket connection)
-- [ ] Mobile: update VideoChatScreen to use socket instead of HTTP+mock
-- [ ] Backend: pass user profile (name, flag, age, gender) in match_found event
-- [ ] Backend: add Agora token generation inside match_found (both users get token)
+## PHASE 2 — Make It Sticky (current sprint)
 
-### Step 2: Real Agora Tokens in matching flow
-- [ ] Backend: generateRtcToken called inside tryMatch(), included in match_found payload
-- [ ] Mobile: receive token from socket, call initAgora()
+### A. Location-Based Regional Pricing (from user image)
+- [x] Expand COIN_PACKS + SUBSCRIPTION_PLANS to 10+ regions
+- [x] useLocationPricing hook: reads expo-location, maps to country code
+- [x] CoinStoreScreen: uses location-detected country for pricing
+- [x] PremiumScreen: same
+- [x] Backend /pricing endpoint for server-side price lookup
+- [x] Anti-abuse: use device GPS country, not user-selected country
 
-### Step 3: Server-side coin validation
-- [ ] Backend: add coins field to in-memory user store (MVP)
-- [ ] Backend: POST /coins/spend endpoint with validation
-- [ ] Mobile: call /coins/spend before every coin-gated action
+### B. Push Notifications (FCM)
+- [x] expo-notifications installed
+- [x] NotificationService (register token, handle foreground/background)
+- [x] Backend POST /notifications/send route (firebase-admin)
+- [x] Triggers: daily bonus ready, gift received, match found
+- [x] App.js / SplashScreen: register on launch
 
-### Step 4: Report & Block (proper)
-- [ ] Already has handleReport() in VideoChatScreen — just needs block to filter matching queue
-- [ ] Backend: store blocked users per userId, filter in tryMatch()
+### C. Interest Tags
+- [x] INTERESTS constant (20 tags)
+- [x] ProfileSetupScreen: step to pick 3-5 interests
+- [x] ProfileScreen: show interest tags
+- [x] chatStore: interestFilter array
+- [x] Backend tryMatch: weight shared interests
 
-### Step 5: Super Match button
-- [ ] Home screen: "Super Match" button (99 coins)
-- [ ] Backend: priority flag in queue
-- [ ] chatStore: superMatch filter
+### D. Social Following
+- [x] followStore.js (followers/following per user, AsyncStorage)
+- [x] Follow button on VideoChatScreen (after 10s)
+- [x] ProfileScreen: followers/following count + list
+- [x] DiscoverScreen: "Following" tab shows followed users' activity
 
-## PHASE 2 — Make It Sticky
-- [ ] Push notifications
-- [ ] Interest tags
-- [ ] Social following
-- [ ] Streak system
+### E. Daily Streak Extension
+- [x] bonusStore: add streak counter (consecutive days)
+- [x] streak freeze (99 coins — buys 1 day grace)
+- [x] DailyBonusModal: show streak flame + day counter
+- [x] 30-day milestone: 500 bonus coins + badge
 
-## DECISIONS
-- socket.io-client version must match backend socket.io version (check package.json)
-- Agora token generated server-side in tryMatch, NOT via separate HTTP call
-- Coins stored server-side in Map for MVP, Redis later
+## PHASE 3 — Make It Pay
+- [ ] RevenueCat VIP subscription
+- [ ] Google Play Billing coin packs
+- [ ] Live stream gifts + diamond economy
+- [ ] AdMob rewarded ads
+
+## DECISIONS (Phase 2)
+- Location pricing uses expo-location GPS → country code. Falls back to 'default' if denied.
+- Anti-abuse: server also checks IP geolocation via backend before confirming purchase price
+- Interest tags stored in user profile object in authStore
+- Follow system is local + backend synced

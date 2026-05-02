@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useFollowStore } from '../../store/followStore';
 import { socketService } from '../../api/socket';
 import { REACTIONS, GIFTS, API_BASE_URL } from '../../constants';
 
@@ -24,6 +25,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function VideoChatScreen({ navigation }) {
   const { user, spendCoins } = useAuthStore();
+  const { follow, isFollowing } = useFollowStore();
   const {
     genderFilter, countryFilter, superMatch, setSuperMatch,
     isConnected, currentMatch, messages, reactions, giftsReceived,
@@ -518,10 +520,24 @@ export default function VideoChatScreen({ navigation }) {
         </View>
       )}
 
-      {/* ── Add friend (after 30s) ── */}
-      {isConnected && sessionDuration > 30 && (
-        <TouchableOpacity style={styles.addFriendBtn}>
-          <Text style={styles.addFriendText}>➕ Follow</Text>
+      {/* ── Follow button (after 10s) ── */}
+      {isConnected && sessionDuration > 10 && currentMatch?.id && (
+        <TouchableOpacity
+          style={[styles.addFriendBtn, isFollowing(currentMatch.id) && styles.addFriendBtnActive]}
+          onPress={async () => {
+            if (!isFollowing(currentMatch.id)) {
+              await follow(
+                currentMatch.id,
+                { displayName: currentMatch.displayName, avatar: currentMatch.photoUrl },
+                user?.id,
+              );
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.addFriendText}>
+            {isFollowing(currentMatch.id) ? '✅ Following' : '➕ Follow'}
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -632,6 +648,7 @@ const styles = StyleSheet.create({
   giftChipCost: { color: colors.gold, fontSize: 11, fontWeight: '700' },
 
   addFriendBtn: { position: 'absolute', top: 270, right: 14, backgroundColor: 'rgba(124,58,237,0.85)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
+  addFriendBtnActive: { backgroundColor: 'rgba(34,197,94,0.85)' },
   addFriendText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center' },
