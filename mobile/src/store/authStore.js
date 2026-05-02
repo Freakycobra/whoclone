@@ -105,5 +105,12 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Credit diamonds from receiving live stream gifts
+  addDiamonds: (amount) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, diamonds: (state.user.diamonds || 0) + amount } : null,
+    }));
+  },
+
   setLoading: (isLoading) => set({ isLoading }),
 }));

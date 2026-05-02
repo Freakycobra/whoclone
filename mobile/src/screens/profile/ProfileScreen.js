@@ -173,6 +173,30 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </View>
 
+          {/* Diamond earnings card — shown if user has diamonds */}
+          {(user?.diamonds || 0) > 0 && (
+            <TouchableOpacity
+              style={styles.diamondCard}
+              onPress={() => Alert.alert(
+                '💎 Diamond Earnings',
+                `You have ${user?.diamonds || 0} diamonds.\n\n100 Diamonds ≈ $0.30\nMin withdrawal: 2,000 Diamonds\n\nWithdrawal payouts coming soon!`,
+              )}
+            >
+              <LinearGradient
+                colors={['rgba(59,130,246,0.15)', 'rgba(124,58,237,0.15)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.diamondCardGrad}
+              >
+                <Text style={styles.diamondCardEmoji}>💎</Text>
+                <View style={styles.diamondCardContent}>
+                  <Text style={styles.diamondCardTitle}>{user.diamonds} Diamonds</Text>
+                  <Text style={styles.diamondCardSub}>≈ ${(user.diamonds * 0.003).toFixed(2)} · Cash Out (Coming Soon)</Text>
+                </View>
+                <Text style={styles.diamondCardArrow}>→</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
           {/* Buttons */}
           <View style={styles.actionRow}>
             <TouchableOpacity style={styles.editBtn} onPress={() => {
@@ -329,6 +353,13 @@ const styles = StyleSheet.create({
   logoutBtn: { marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', borderRadius: 16, padding: 16, alignItems: 'center' },
   logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
   version: { textAlign: 'center', color: colors.textMuted, fontSize: 12, marginBottom: 8 },
+  diamondCard: { width: '100%', borderRadius: 14, overflow: 'hidden', marginBottom: 8, borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)' },
+  diamondCardGrad: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  diamondCardEmoji: { fontSize: 26 },
+  diamondCardContent: { flex: 1 },
+  diamondCardTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  diamondCardSub: { color: '#93C5FD', fontSize: 12, marginTop: 2 },
+  diamondCardArrow: { color: '#93C5FD', fontSize: 16, fontWeight: '700' },
   interestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 12 },
   interestChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(124,58,237,0.15)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' },
   interestEmoji: { fontSize: 13, marginRight: 4 },

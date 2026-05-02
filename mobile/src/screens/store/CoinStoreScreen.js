@@ -150,6 +150,33 @@ export default function CoinStoreScreen({ navigation }) {
               ))
             )}
 
+            {/* Free coins section */}
+            <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Earn Free Coins</Text>
+            <View style={styles.freeCoinsCard}>
+              {[
+                { icon: '📺', title: 'Watch an Ad', sub: 'Watch a short video', reward: '+10 🪙', action: () => {
+                  Alert.alert('Watch Ad', 'This would show a rewarded ad via AdMob.\n\nIn production: AdMob SDK required.', [
+                    { text: 'Skip', style: 'cancel' },
+                    { text: 'Simulate (+10 🪙)', onPress: () => { addCoins(10); Alert.alert('', '+10 coins added!'); } },
+                  ]);
+                }},
+                { icon: '👥', title: 'Invite a Friend', sub: 'Both get 100 coins', reward: '+100 🪙', action: () => Alert.alert('Invite', 'Share your referral link: connectnow.app/invite/YOU\n\n(Deep links coming soon)') },
+                { icon: '⭐', title: 'Rate the App', sub: 'One-time reward', reward: '+50 🪙', action: () => { addCoins(50); Alert.alert('', 'Thank you! +50 coins added!'); } },
+                { icon: '✅', title: 'Complete Profile', sub: 'Add bio + photo', reward: '+50 🪙', action: () => Alert.alert('Complete Profile', 'Add your bio and profile photo in Profile → Edit Profile.') },
+              ].map((item, i) => (
+                <TouchableOpacity key={i} style={styles.freeRow} onPress={item.action} activeOpacity={0.75}>
+                  <Text style={styles.freeIcon}>{item.icon}</Text>
+                  <View style={styles.freeContent}>
+                    <Text style={styles.freeTitle}>{item.title}</Text>
+                    <Text style={styles.freeSub}>{item.sub}</Text>
+                  </View>
+                  <View style={styles.freeRewardBadge}>
+                    <Text style={styles.freeReward}>{item.reward}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             {/* Milestone bonus */}
             <View style={styles.milestoneCard}>
               <Text style={styles.milestoneTitle}>🎯 Milestone Bonuses</Text>
@@ -385,4 +412,12 @@ const styles = StyleSheet.create({
   vipCtaBtn: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   vipCtaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   vipNote: { color: colors.textMuted, fontSize: 12, textAlign: 'center' },
+  freeCoinsCard: { backgroundColor: colors.backgroundSecondary, borderRadius: 16, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: colors.cardBorder },
+  freeRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.cardBorder },
+  freeIcon: { fontSize: 24, width: 32, textAlign: 'center' },
+  freeContent: { flex: 1 },
+  freeTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  freeSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+  freeRewardBadge: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' },
+  freeReward: { color: colors.success, fontSize: 12, fontWeight: '700' },
 });
