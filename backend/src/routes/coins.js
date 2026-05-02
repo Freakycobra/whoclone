@@ -1,61 +1,67 @@
 const express = require('express');
 const router = express.Router();
 
-// GET /coins/balance
+// In-memory coin store (MVP — replace with DB in production)
+// userId -> balance
+const coinBalances = new Map();
+
+const DEFAULT_BALANCE = 100; // New users start with 100 coins
+
+function getBalance(userId) {
+  if (!coinBalances.has(userId)) {
+    coinBalances.set(userId, DEFAULT_BALANCE);
+  }
+  return coinBalances.get(userId);
+}
+
+// GET /coins/balance?userId=xxx
 router.get('/balance', (req, res) => {
-  res.json({ coins: 100, diamonds: 0 });
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  res.json({ userId, balance: getBalance(userId) });
 });
 
-// POST /coins/purchase - Stripe payment intent
-router.post('/purchase', async (req, res) => {
-  const { packId, country } = req.body;
+// POST /coins/spend  { userId, amount, reason }
+router.post('/spend', (req, res) => {
+  const { userId, amount, reason } = req.body;
+  if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
 
-  // In production:
-  // const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  // const paymentIntent = await stripe.paymentIntents.create({ amount, currency });
+  const balance = getBalance(userId);
+  if (balance < amount) {
+    return res.status(402).json({ error: 'Insufficient coins', balance });
+  }
 
-  res.json({
-    clientSecret: 'demo_client_secret',
-    packId,
-    message: 'Payment intent created. Use Stripe SDK to complete payment.',
-  });
+  const newBalance = balance - amount;
+  coinBalances.set(userId, newBalance);
+
+  console.log(`[coins] ${userId} spent ${amount} for "${reason}" | balance: ${newBalance}`);
+  res.json({ success: true, spent: amount, balance: newBalance, reason });
 });
 
-// POST /coins/iap/verify - Google Play IAP verification
-router.post('/iap/verify', async (req, res) => {
-  const { receipt, packId } = req.body;
+// POST /coins/add  { userId, amount, reason }
+router.post('/add', (req, res) => {
+  const { userId, amount, reason } = req.body;
+  if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
 
-  // In production: verify with Google Play Developer API
-  // Prevent duplicate receipt use
+  const newBalance = getBalance(userId) + amount;
+  coinBalances.set(userId, newBalance);
 
-  const PACK_COINS = {
-    'coins_100_in': 100,
-    'coins_500_in': 500,
-    'coins_1200_in': 1200,
-    'coins_3000_in': 3000, // + 500 bonus
-    'coins_6000_in': 6000, // + 1000 bonus
-    'coins_12000_in': 12000, // + 3000 bonus
-  };
-
-  const coins = PACK_COINS[packId] || 0;
-  res.json({ success: true, coinsAdded: coins });
+  console.log(`[coins] ${userId} earned ${amount} for "${reason}" | balance: ${newBalance}`);
+  res.json({ success: true, added: amount, balance: newBalance });
 });
 
-// POST /coins/daily-bonus
-router.post('/daily-bonus', (req, res) => {
-  // Check last claim time in DB
-  res.json({ success: true, coinsAdded: 50, message: 'Daily bonus claimed!' });
-});
+// POST /coins/sync  { userId, localBalance }
+// Called on app launch — syncs local Zustand balance with server
+router.post('/sync', (req, res) => {
+  const { userId, localBalance } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
 
-// GET /coins/history
-router.get('/history', (req, res) => {
-  res.json({
-    transactions: [
-      { type: 'purchase', amount: 500, description: 'Popular Pack', date: new Date() },
-      { type: 'gift_sent', amount: -29, description: 'Rose to Priya', date: new Date() },
-      { type: 'daily_bonus', amount: 50, description: 'Daily bonus', date: new Date() },
-    ],
-  });
+  // If no server record yet, trust local balance (first launch)
+  if (!coinBalances.has(userId) && localBalance != null) {
+    coinBalances.set(userId, localBalance);
+  }
+
+  res.json({ balance: getBalance(userId) });
 });
 
 module.exports = router;

@@ -23,6 +23,7 @@ export const useChatStore = create((set, get) => ({
   // Filters (premium)
   genderFilter: null, // 'male' | 'female' | null
   countryFilter: null,
+  superMatch: false,
 
   setSearching: (isSearching) => set({ isSearching }),
 
@@ -71,6 +72,7 @@ export const useChatStore = create((set, get) => ({
 
   setGenderFilter: (gender) => set({ genderFilter: gender }),
   setCountryFilter: (country) => set({ countryFilter: country }),
+  setSuperMatch: (val) => set({ superMatch: val }),
 
   getSessionDuration: () => {
     const { matchStartTime } = get();

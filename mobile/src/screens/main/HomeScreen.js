@@ -8,6 +8,8 @@ import * as Location from 'expo-location';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+
+const SUPER_MATCH_COST = 99;
 import { useBonusStore } from '../../store/bonusStore';
 import DailyBonusModal from '../../components/DailyBonusModal';
 
@@ -41,7 +43,7 @@ const GENDER_COST = 9; // coins to filter by gender
 
 export default function HomeScreen({ navigation }) {
   const { user, addCoins, spendCoins } = useAuthStore();
-  const { genderFilter, countryFilter, setGenderFilter, setCountryFilter } = useChatStore();
+  const { genderFilter, countryFilter, setGenderFilter, setCountryFilter, setSuperMatch } = useChatStore();
   const { loadBonus, shouldShowPopup, markShown } = useBonusStore();
   const [pulseAnim] = useState(new Animated.Value(1));
   const [onlineCount] = useState(Math.floor(Math.random() * 3000) + 8000);
@@ -126,6 +128,19 @@ export default function HomeScreen({ navigation }) {
     setShowGenderModal(false);
   };
 
+  const handleSuperMatch = () => {
+    if ((user?.coins || 0) < SUPER_MATCH_COST) {
+      Alert.alert('Not enough coins', `Super Match costs ${SUPER_MATCH_COST} coins.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Buy Coins', onPress: () => navigation.navigate('CoinStore') },
+      ]);
+      return;
+    }
+    spendCoins(SUPER_MATCH_COST, 'super_match');
+    setSuperMatch(true);
+    navigation.navigate('VideoChat');
+  };
+
   const selectedCountry = COUNTRIES.find(c => c.code === countryFilter) || COUNTRIES[0];
   const selectedGender = GENDERS.find(g => g.code === genderFilter) || GENDERS[0];
 
@@ -170,6 +185,15 @@ export default function HomeScreen({ navigation }) {
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Super Match button */}
+          <TouchableOpacity style={styles.superMatchBtn} onPress={handleSuperMatch} activeOpacity={0.85}>
+            <LinearGradient colors={['#F59E0B', '#EF4444']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.superMatchGrad}>
+              <Text style={styles.superMatchIcon}>⚡</Text>
+              <Text style={styles.superMatchText}>Super Match</Text>
+              <Text style={styles.superMatchCost}>{SUPER_MATCH_COST}🪙</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
           {/* Filters */}
           <View style={styles.filtersRow}>
@@ -353,6 +377,11 @@ const styles = StyleSheet.create({
   startEmoji: { fontSize: 36, marginBottom: 4 },
   startText: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 2 },
   startSubText: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+  superMatchBtn: { width: '100%', borderRadius: 20, overflow: 'hidden', marginBottom: 14 },
+  superMatchGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 24, gap: 8 },
+  superMatchIcon: { fontSize: 18 },
+  superMatchText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
+  superMatchCost: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700', backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   filtersRow: { flexDirection: 'row', gap: 12 },
   filterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.backgroundSecondary, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.cardBorder, gap: 6 },
   filterChipActive: { borderColor: colors.primary, backgroundColor: 'rgba(124,58,237,0.15)' },

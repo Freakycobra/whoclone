@@ -1,42 +1,45 @@
-# ConnectNow — Build Task ✅
+# ConnectNow — Implementation Tracker
 
-## Status: COMPLETE (Phase 1 MVP)
+## STATUS KEY
+- [x] Done
+- [~] In progress
+- [ ] Todo
 
-## What was built
+## PHASE 1 — Make It Real (current sprint)
 
-### Mobile App (Expo / React Native)
-- ✅ Splash screen with animated logo
-- ✅ 4-slide onboarding flow
-- ✅ Phone OTP auth (country picker — India default, 10 countries)
-- ✅ Google Sign-In placeholder
-- ✅ Profile setup (name, gender, age, bio, avatar)
-- ✅ Age verification gate (18+)
-- ✅ Home screen (START button, online count, daily bonus, VIP banner)
-- ✅ Video chat screen (matching queue, Agora placeholder, gifts, reactions, timer, skip/end, rating)
-- ✅ Coin store with PPP pricing (India ₹, BD ৳, ID Rp, PH ₱, default $)
-- ✅ Flash sale + loyalty progress + milestone bonuses
-- ✅ VIP / Premium screen (comparison table, plan selector)
-- ✅ Profile screen (stats, menu, logout)
-- ✅ Live streaming screen (setup + live mode with viewer count, diamonds, comments)
-- ✅ Bottom tab navigation (5 tabs, center START button)
+### Step 1: Real Socket.IO Matching (backend already ready)
+- [x] Backend socket events exist (join_queue, match_found, skip_match, end_match)
+- [ ] Mobile: install socket.io-client
+- [ ] Mobile: create socketService.js (singleton socket connection)
+- [ ] Mobile: update VideoChatScreen to use socket instead of HTTP+mock
+- [ ] Backend: pass user profile (name, flag, age, gender) in match_found event
+- [ ] Backend: add Agora token generation inside match_found (both users get token)
 
-### Backend (Node.js + Express + Socket.IO)
-- ✅ Auth routes (OTP send/verify, Google, profile setup)
-- ✅ Matching routes (Socket.IO queue, real-time pairing)
-- ✅ Coin routes (purchase, IAP verify, daily bonus)
-- ✅ Gifts routes (send, deduct coins, credit diamonds)
-- ✅ User routes (report, block)
-- ✅ PostgreSQL schema (full — users, sessions, gifts, coins, withdrawals)
-- ✅ .env.example with all required variables
+### Step 2: Real Agora Tokens in matching flow
+- [ ] Backend: generateRtcToken called inside tryMatch(), included in match_found payload
+- [ ] Mobile: receive token from socket, call initAgora()
 
-### Docs
-- ✅ DEPLOY_GUIDE.md — complete step-by-step for non-technical founder
+### Step 3: Server-side coin validation
+- [ ] Backend: add coins field to in-memory user store (MVP)
+- [ ] Backend: POST /coins/spend endpoint with validation
+- [ ] Mobile: call /coins/spend before every coin-gated action
 
-## Next Steps (Phase 2)
-- [ ] Add Agora RTC SDK (real video — need AGORA_APP_ID first)
-- [ ] Add Firebase phone auth (need Firebase project)
-- [ ] Friends system
-- [ ] Leaderboard
-- [ ] AI content moderation (AWS Rekognition)
-- [ ] iOS build
-- [ ] Admin dashboard web app
+### Step 4: Report & Block (proper)
+- [ ] Already has handleReport() in VideoChatScreen — just needs block to filter matching queue
+- [ ] Backend: store blocked users per userId, filter in tryMatch()
+
+### Step 5: Super Match button
+- [ ] Home screen: "Super Match" button (99 coins)
+- [ ] Backend: priority flag in queue
+- [ ] chatStore: superMatch filter
+
+## PHASE 2 — Make It Sticky
+- [ ] Push notifications
+- [ ] Interest tags
+- [ ] Social following
+- [ ] Streak system
+
+## DECISIONS
+- socket.io-client version must match backend socket.io version (check package.json)
+- Agora token generated server-side in tryMatch, NOT via separate HTTP call
+- Coins stored server-side in Map for MVP, Redis later
