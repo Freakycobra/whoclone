@@ -1,4 +1,4 @@
-package com.connectnow.app
+package com.connectnow.mobile
 
 import android.app.Application
 import android.content.res.Configuration

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
@@ -7,6 +7,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
+import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const COUNTRY_CODES = [
   { code: '+1', flag: '🇺🇸', name: 'USA' },
@@ -21,9 +23,10 @@ const COUNTRY_CODES = [
   { code: '+44', flag: '🇬🇧', name: 'UK' },
 ];
 
-// DEV MODE — any 6-digit OTP works. Replace with Firebase in production.
-const DEV_MODE = true;
-const DEV_OTP = '123456';
+// Web client ID from google-services.json (type 3 oauth client)
+const WEB_CLIENT_ID = '60549687002-1m5oj7s4m53bpg1rbh8cdoddcaha827d.apps.googleusercontent.com';
+
+GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
 
 export default function PhoneAuthScreen({ navigation }) {
   const [step, setStep] = useState('phone');
@@ -32,77 +35,83 @@ export default function PhoneAuthScreen({ navigation }) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirm, setConfirm] = useState(null);
 
   const { setUser, setToken } = useAuthStore();
+
+  const handleFirebaseUser = async (firebaseUser) => {
+    const token = await firebaseUser.getIdToken();
+    setToken(token);
+    setUser({
+      id: firebaseUser.uid,
+      phone: firebaseUser.phoneNumber || null,
+      email: firebaseUser.email || null,
+      displayName: firebaseUser.displayName || null,
+      photoURL: firebaseUser.photoURL || null,
+      coins: 100,
+      diamonds: 0,
+      isVip: false,
+      friends: 0,
+    });
+    navigation.replace('ProfileSetup');
+  };
 
   const sendOTP = async () => {
     if (phone.length < 5) {
       Alert.alert('Invalid', 'Enter a valid phone number');
       return;
     }
+    const fullPhone = `${selectedCode.code}${phone}`;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800)); // simulate network
-    setLoading(false);
-    setStep('otp');
-
-    if (DEV_MODE) {
-      Alert.alert(
-        '📱 Dev Mode',
-        `OTP sent! Use code: ${DEV_OTP}\n\n(Real SMS will work after Firebase setup)`,
-        [{ text: 'OK' }]
-      );
+    try {
+      const confirmation = await auth().signInWithPhoneNumber(fullPhone);
+      setConfirm(confirmation);
+      setStep('otp');
+    } catch (err) {
+      console.error('OTP send error:', err);
+      Alert.alert('Error', err.message || 'Failed to send OTP. Check your phone number.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const verifyOTP = async () => {
-    if (otp.length < 4) {
-      Alert.alert('Invalid', 'Enter the OTP');
+    if (otp.length < 6) {
+      Alert.alert('Invalid', 'Enter the 6-digit OTP');
       return;
     }
-
-    if (DEV_MODE && otp !== DEV_OTP) {
-      Alert.alert('Wrong OTP', `Use ${DEV_OTP} for now (dev mode)`);
+    if (!confirm) {
+      Alert.alert('Error', 'Please request OTP again');
       return;
     }
-
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-
-    const fullPhone = `${selectedCode.code}${phone}`;
-    const userId = 'user_' + Date.now();
-
-    setToken('dev_token_' + userId);
-    setUser({
-      id: userId,
-      phone: fullPhone,
-      coins: 100,
-      diamonds: 0,
-      isVip: false,
-      friends: 0,
-    });
-
-    setLoading(false);
-    navigation.replace('ProfileSetup');
+    try {
+      const credential = await confirm.confirm(otp);
+      await handleFirebaseUser(credential.user);
+    } catch (err) {
+      console.error('OTP verify error:', err);
+      Alert.alert('Wrong OTP', 'The code you entered is incorrect. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-
-    const userId = 'google_' + Date.now();
-    setToken('dev_token_' + userId);
-    setUser({
-      id: userId,
-      displayName: 'Google User',
-      email: 'user@gmail.com',
-      coins: 100,
-      diamonds: 0,
-      isVip: false,
-      friends: 0,
-    });
-
-    setLoading(false);
-    navigation.replace('ProfileSetup');
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const googleCredential = auth.GoogleAuthProvider.credential(userInfo.data?.idToken || userInfo.idToken);
+      const result = await auth().signInWithCredential(googleCredential);
+      await handleFirebaseUser(result.user);
+    } catch (err) {
+      console.error('Google sign in error:', err);
+      if (err.code !== 'SIGN_IN_CANCELLED') {
+        Alert.alert('Google Sign-In Failed', err.message || 'Something went wrong');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -126,11 +135,6 @@ export default function PhoneAuthScreen({ navigation }) {
               ? "We'll send you a verification code"
               : `Code sent to ${selectedCode.code} ${phone}`}
           </Text>
-          {step === 'otp' && DEV_MODE && (
-            <View style={styles.devBanner}>
-              <Text style={styles.devBannerText}>🛠 Dev mode — use code: {DEV_OTP}</Text>
-            </View>
-          )}
         </View>
 
         {/* Phone input */}
@@ -187,7 +191,7 @@ export default function PhoneAuthScreen({ navigation }) {
               textAlign="center"
               autoFocus
             />
-            <TouchableOpacity onPress={() => setStep('phone')} style={styles.changeNumber}>
+            <TouchableOpacity onPress={() => { setStep('phone'); setConfirm(null); }} style={styles.changeNumber}>
               <Text style={styles.changeNumberText}>Change number?</Text>
             </TouchableOpacity>
           </View>
@@ -258,16 +262,6 @@ const styles = StyleSheet.create({
   logoEmoji: { fontSize: 36 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 8 },
   subtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center' },
-  devBanner: {
-    marginTop: 12,
-    backgroundColor: 'rgba(245,158,11,0.15)',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.4)',
-  },
-  devBannerText: { color: '#F59E0B', fontSize: 13, fontWeight: '600' },
   inputSection: {
     flexDirection: 'row',
     borderWidth: 1.5,

@@ -17,8 +17,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.connectnow.app",
+      "package": "com.connectnow.mobile",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -29,7 +30,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.connectnow.app",
+      "bundleIdentifier": "com.connectnow.mobile",
       "infoPlist": {
         "NSCameraUsageDescription": "ConnectNow needs camera access for video chat",
         "NSMicrophoneUsageDescription": "ConnectNow needs microphone access for video chat",
@@ -37,6 +38,8 @@
       }
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
       [
         "expo-camera",
         {

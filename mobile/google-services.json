@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "60549687002",
+    "project_id": "connectnow-f3c14",
+    "storage_bucket": "connectnow-f3c14.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:60549687002:android:c4ea1a8994e2b033b9e7e3",
+        "android_client_info": {
+          "package_name": "com.connectnow.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "60549687002-o6o2ppi75gp4vgm1i503okcb89ajlgeu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.connectnow.mobile",
+            "certificate_hash": "4ee5546d8e622ea51d672f867872bd3098118b50"
+          }
+        },
+        {
+          "client_id": "60549687002-1m5oj7s4m53bpg1rbh8cdoddcaha827d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3SPFAvvH0u3Pu9BqoAEYHBx0xk0kbBwo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "60549687002-1m5oj7s4m53bpg1rbh8cdoddcaha827d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

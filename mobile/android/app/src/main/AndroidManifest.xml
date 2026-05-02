@@ -29,7 +29,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="connectnow"/>
-        <data android:scheme="com.connectnow.app"/>
+        <data android:scheme="com.connectnow.mobile"/>
       </intent-filter>
     </activity>
     <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" android:exported="false"/>
