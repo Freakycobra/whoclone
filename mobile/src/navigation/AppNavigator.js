@@ -32,6 +32,8 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 
 // Streaming
 import LiveStreamScreen from '../screens/streaming/LiveStreamScreen';
+import FriendsScreen from '../screens/social/FriendsScreen';
+import ChatDMScreen from '../screens/social/ChatDMScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -178,6 +180,8 @@ export default function AppNavigator() {
         />
         <Stack.Screen name="CoinStore" component={CoinStoreScreen} />
         <Stack.Screen name="Premium" component={PremiumScreen} />
+        <Stack.Screen name="Friends" component={FriendsScreen} />
+        <Stack.Screen name="ChatDM" component={ChatDMScreen} />
         <Stack.Screen
           name="LiveStreaming"
           component={LiveStreamScreen}

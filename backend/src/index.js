@@ -15,6 +15,9 @@ const giftsRoutes   = require('./routes/gifts');
 const agoraRoutes   = require('./routes/agora');
 const { router: leaderboardRouter } = require('./routes/leaderboard');
 const { router: notificationsRouter, fcmTokens } = require('./routes/notifications');
+const friendsRouter    = require('./routes/friends');
+const purchasesRouter  = require('./routes/purchases');
+const subscriptionsRouter = require('./routes/subscriptions');
 
 const app    = express();
 const server = http.createServer(app);
@@ -38,8 +41,11 @@ app.use('/coins',         coinsRoutes);
 app.use('/users',         usersRoutes);
 app.use('/gifts',         giftsRoutes);
 app.use('/agora',         agoraRoutes);
-app.use('/leaderboard',   leaderboardRouter);
-app.use('/notifications', notificationsRouter);
+app.use('/leaderboard',     leaderboardRouter);
+app.use('/notifications',   notificationsRouter);
+app.use('/friends',         friendsRouter);
+app.use('/purchases',       purchasesRouter);
+app.use('/subscriptions',   subscriptionsRouter);
 
 // ─── FCM SEND HELPER ─────────────────────────────────────────────────────────
 // Uses firebase-admin if GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT is set.

@@ -8,6 +8,7 @@ import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 import { useFollowStore } from '../../store/followStore';
+import { useFriendStore } from '../../store/friendStore';
 import { socketService } from '../../api/socket';
 import { REACTIONS, GIFTS, API_BASE_URL } from '../../constants';
 
@@ -26,6 +27,8 @@ const { width, height } = Dimensions.get('window');
 export default function VideoChatScreen({ navigation }) {
   const { user, spendCoins } = useAuthStore();
   const { follow, isFollowing } = useFollowStore();
+  const { sendRequest, checkFriendship } = useFriendStore();
+  const [friendStatus, setFriendStatus] = useState({ areFriends: false, requestSent: false });
   const {
     genderFilter, countryFilter, superMatch, setSuperMatch,
     isConnected, currentMatch, messages, reactions, giftsReceived,
@@ -150,6 +153,11 @@ export default function VideoChatScreen({ navigation }) {
 
       sessionIdRef.current = data.sessionId;
       setConnected(data.partner, data.sessionId, data.agoraToken, data.channelName);
+
+      // Check friend status with matched user
+      if (user?.uid && data.partner?.id) {
+        checkFriendship(user.uid, data.partner.id).then(setFriendStatus);
+      }
 
       // Start session timer
       timerRef.current = setInterval(() => setSessionDuration(d => d + 1), 1000);
@@ -589,6 +597,30 @@ export default function VideoChatScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Add Friend button */}
+            {currentMatch?.id && !friendStatus.areFriends && (
+              <TouchableOpacity
+                style={[styles.addFriendBtn, friendStatus.requestSent && styles.addFriendBtnSent]}
+                onPress={async () => {
+                  if (friendStatus.requestSent) return;
+                  const result = await sendRequest(user.uid, currentMatch.id);
+                  if (result?.success !== false) {
+                    setFriendStatus((s) => ({ ...s, requestSent: true }));
+                  }
+                }}
+              >
+                <Text style={styles.addFriendBtnText}>
+                  {friendStatus.requestSent ? '✓ Request Sent' : '👥 Add Friend'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {friendStatus.areFriends && (
+              <View style={styles.alreadyFriendBadge}>
+                <Text style={styles.alreadyFriendText}>✓ Already Friends</Text>
+              </View>
+            )}
+
             <TouchableOpacity onPress={() => handleRateAndExit(0)} style={styles.skipRatingBtn}>
               <Text style={styles.skipRatingText}>Skip rating</Text>
             </TouchableOpacity>
@@ -684,6 +716,11 @@ const styles = StyleSheet.create({
   ratingCard: { width: width - 48, borderRadius: 26, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: colors.cardBorder },
   ratingTitle: { color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 4 },
   ratingWith: { color: colors.textSecondary, fontSize: 14, marginBottom: 26 },
+  addFriendBtn: { marginTop: 16, backgroundColor: 'rgba(124,58,237,0.2)', borderRadius: 24, paddingHorizontal: 28, paddingVertical: 12, borderWidth: 1, borderColor: colors.primary },
+  addFriendBtnSent: { backgroundColor: 'rgba(16,185,129,0.15)', borderColor: colors.success },
+  addFriendBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  alreadyFriendBadge: { marginTop: 16, backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8, borderWidth: 1, borderColor: colors.success },
+  alreadyFriendText: { color: colors.success, fontSize: 13, fontWeight: '600' },
   starsRow: { flexDirection: 'row', gap: 8, marginBottom: 22 },
   starBtn: { padding: 4 },
   starEmoji: { fontSize: 40 },

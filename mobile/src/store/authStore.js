@@ -1,5 +1,8 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants';
+
+const VIP_KEY = '@connectnow_vip';
 
 async function serverSpend(userId, amount, reason) {
   try {
@@ -44,6 +47,8 @@ async function syncCoins(userId, localBalance) {
   }
 }
 
+// Self-reference for updateUser AsyncStorage persistence
+let useAuthStoreRef;
 export const useAuthStore = create((set, get) => ({
   user: null,
   token: null,
@@ -51,10 +56,33 @@ export const useAuthStore = create((set, get) => ({
   isLoading: false,
 
   setUser: async (user) => {
-    // On login, sync coin balance with server
     if (user?.uid) {
+      // Sync coins
       const serverBalance = await syncCoins(user.uid, user.coins ?? 100);
-      set({ user: { ...user, coins: serverBalance }, isAuthenticated: true });
+
+      // Check VIP status — server first, fall back to local cache
+      let isVip = user.isVip || false;
+      let vipExpiry = user.vipExpiry || null;
+      try {
+        const cached = await AsyncStorage.getItem(`${VIP_KEY}_${user.uid}`);
+        if (cached) {
+          const { expiry } = JSON.parse(cached);
+          if (expiry && new Date(expiry) > new Date()) {
+            isVip = true;
+            vipExpiry = expiry;
+          } else {
+            isVip = false;
+            vipExpiry = null;
+          }
+        }
+        // Also check server
+        const res = await fetch(`${API_BASE_URL}/subscriptions/status/${user.uid}`);
+        const data = await res.json();
+        if (data.isVip) { isVip = true; vipExpiry = data.expiry || null; }
+        else if (!data.isVip && data.expired) { isVip = false; }
+      } catch {}
+
+      set({ user: { ...user, coins: serverBalance, isVip, vipExpiry }, isAuthenticated: true });
     } else {
       set({ user, isAuthenticated: !!user });
     }
@@ -62,9 +90,21 @@ export const useAuthStore = create((set, get) => ({
 
   setToken: (token) => set({ token }),
 
-  updateUser: (updates) => set((state) => ({
-    user: state.user ? { ...state.user, ...updates } : null,
-  })),
+  updateUser: async (updates) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, ...updates } : null,
+    }));
+    // Persist VIP to AsyncStorage
+    if (updates.isVip !== undefined) {
+      const { user } = useAuthStoreRef();
+      if (user?.uid) {
+        await AsyncStorage.setItem(
+          `${VIP_KEY}_${user.uid}`,
+          JSON.stringify({ isVip: updates.isVip, expiry: updates.vipExpiry || null })
+        );
+      }
+    }
+  },
 
   logout: () => set({ user: null, token: null, isAuthenticated: false }),
 
@@ -114,3 +154,6 @@ export const useAuthStore = create((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 }));
+
+// Wire self-reference after creation
+useAuthStoreRef = useAuthStore.getState;

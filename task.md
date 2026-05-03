@@ -1,34 +1,34 @@
-# Report/Block + Push Notifications
+# Phase 4 — Premium Paywall + IAP + Friends System
+
+## FEATURES
+1. Google Play IAP — real purchases via expo-iap (replaces fake Alert)
+2. Premium subscription paywall — isVip stored persistently, gated features
+3. Friends system — add friend after chat, friend list screen, DM friends
 
 ## PLAN
 
-### A — Report/Block (complete the system)
-1. VideoChatScreen.js — add "Block" option alongside Report (already has report)
-2. backend/routes/users.js — block route needs to actually store blocked users + filter in matching
-3. backend/index.js — blockedUsers Map already exists, expose /users/block to update it
-4. ProfileScreen.js — no changes needed (report is video-only)
+### A — Google Play IAP (expo-iap)
+- Install expo-iap (SDK 51 compatible)
+- Create src/hooks/useIAP.js — initialize IAP, purchase coins, purchase VIP sub
+- Update CoinStoreScreen — wire real purchase flow
+- Update PremiumScreen — wire real subscription flow  
+- Update authStore — persist isVip flag
+- Backend: POST /purchases/verify — validate receipt (MVP: trust client, log server-side)
 
-### B — Push Notifications (FCM via @react-native-firebase/messaging)
-Firebase is already installed (@react-native-firebase/app + auth).
-Just need to add @react-native-firebase/messaging.
+### B — Friends System
+- Backend: routes/friends.js — sendRequest, accept, list, remove, DM
+- Mobile: store/friendStore.js
+- Mobile: screens/social/FriendsScreen.js — friend list + pending requests
+- Mobile: screens/social/ChatDMScreen.js — simple text DM between friends
+- Wire "Add Friend" button in VideoChatScreen post-match rating screen
+- Add Friends tab to navigation or Friends button on Profile
 
-5. Install: @react-native-firebase/messaging
-6. app.json — add POST_NOTIFICATIONS permission + messaging plugin
-7. mobile/src/api/notifications.js — NEW: register device token, send local notif
-8. mobile/src/hooks/usePushNotifications.js — NEW: setup on app launch
-9. App.js (or root) — call usePushNotifications on mount
-10. backend/routes/notifications.js — NEW: store FCM tokens, send notifications
-11. backend/index.js — wire notifications route + emit push on match_found
+### C — Persistence for isVip
+- Store isVip + expiry in AsyncStorage
+- Check expiry on app launch — downgrade if expired
+- Backend: POST /subscriptions/activate, GET /subscriptions/status
 
-### NOTIFICATION TYPES
-- Match found → "⚡ Match found! Tap to join" (wake app from background)  
-- Gift received → "🎁 @user sent you a Rose!" 
-- Daily bonus ready → "🎁 Your daily reward is ready!"
-- Follower online → "🔴 @user just went live!" (future — stub the handler)
-
-### DECISIONS
-- Use @react-native-firebase/messaging (not expo-notifications) — Firebase already in project, cleaner
-- Token stored on backend per userId (in-memory for MVP)
-- Notifications sent server-side via Firebase Admin SDK
-- Foreground notifications: show custom in-app banner (not system notification)
-- Background notifications: system tray via FCM
+## STATUS
+- [ ] A — IAP
+- [ ] B — Friends  
+- [ ] C — VIP persistence

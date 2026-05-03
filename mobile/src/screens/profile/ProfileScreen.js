@@ -73,7 +73,7 @@ export default function ProfileScreen({ navigation }) {
 
   const handleMenuPress = (id) => {
     switch (id) {
-      case 'friends': Alert.alert('Friends', 'Friends feature coming soon!'); break;
+      case 'friends': navigation.navigate('Friends'); break;
       case 'history': Alert.alert('Chat History', 'Chat history feature coming soon!'); break;
       case 'earnings': Alert.alert('Diamond Earnings', `You have ${user?.diamonds || 0} diamonds.\n\nDiamond payouts will be available soon.`); break;
       case 'settings': Alert.alert('Settings', 'Choose an option:', [
