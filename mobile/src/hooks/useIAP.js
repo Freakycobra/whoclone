@@ -9,13 +9,12 @@ import {
   purchaseUpdatedListener,
   purchaseErrorListener,
   finishTransaction,
-  clearTransactionIOS,
-} from 'expo-iap';
+  flushFailedPurchasesCachedAsPendingAndroid,
+} from 'react-native-iap';
 import { Platform, Alert } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { API_BASE_URL } from '../constants';
 
-// All product IDs must match exactly what's registered in Google Play Console
 export const COIN_PRODUCT_IDS = [
   'coins_100',
   'coins_500',
@@ -30,7 +29,6 @@ export const SUB_PRODUCT_IDS = [
   'vip_y',
 ];
 
-// Coins map: productId -> coin amount
 const COINS_MAP = {
   coins_100:  100,
   coins_500:  500,
@@ -39,7 +37,6 @@ const COINS_MAP = {
   coins_6000: 6000,
 };
 
-// Sub duration map: productId -> days
 const SUB_DAYS_MAP = {
   vip_w: 7,
   vip_m: 30,
@@ -60,29 +57,30 @@ export function useIAP() {
     async function setup() {
       try {
         await initConnection();
+
+        // Android: flush any stuck pending purchases
+        if (Platform.OS === 'android') {
+          await flushFailedPurchasesCachedAsPendingAndroid().catch(() => {});
+        }
+
         setConnected(true);
 
-        // Load products
         const prods = await getProducts({ skus: COIN_PRODUCT_IDS }).catch(() => []);
         const subs  = await getSubscriptions({ skus: SUB_PRODUCT_IDS }).catch(() => []);
         setProducts(prods || []);
         setSubscriptions(subs || []);
 
-        // Listen for successful purchases
         purchaseUpdateSub = purchaseUpdatedListener(async (purchase) => {
           const { productId, transactionReceipt } = purchase;
           if (!transactionReceipt) return;
 
           try {
-            // Verify with backend (MVP: trust client, server logs for audit)
             await verifyPurchase(user?.uid, productId, transactionReceipt);
 
             if (COINS_MAP[productId]) {
-              // Coin purchase
               await addCoins(COINS_MAP[productId], `iap_${productId}`);
               Alert.alert('✅ Purchase Successful!', `${COINS_MAP[productId]} coins added!`);
             } else if (SUB_DAYS_MAP[productId]) {
-              // VIP subscription
               const expiryDate = new Date();
               expiryDate.setDate(expiryDate.getDate() + SUB_DAYS_MAP[productId]);
               updateUser({ isVip: true, vipExpiry: expiryDate.toISOString(), vipProductId: productId });
@@ -90,24 +88,22 @@ export function useIAP() {
               Alert.alert('👑 Welcome to VIP!', 'All premium features are now unlocked.');
             }
 
-            // Finish transaction (required on both platforms)
             await finishTransaction({ purchase, isConsumable: !!COINS_MAP[productId] });
           } catch (err) {
-            console.warn('[IAP] purchase processing error:', err);
+            console.warn('[IAP] processing error:', err);
           }
           setPurchasing(false);
         });
 
-        // Listen for errors
         purchaseErrorSub = purchaseErrorListener((error) => {
-          console.warn('[IAP] purchase error:', error);
+          console.warn('[IAP] error:', error);
           if (error?.code !== 'E_USER_CANCELLED') {
-            Alert.alert('Purchase Failed', error?.message || 'Something went wrong. Please try again.');
+            Alert.alert('Purchase Failed', error?.message || 'Something went wrong.');
           }
           setPurchasing(false);
         });
       } catch (err) {
-        console.warn('[IAP] init failed:', err);
+        console.warn('[IAP] init failed:', err.message);
         setConnected(false);
       }
     }
@@ -123,7 +119,7 @@ export function useIAP() {
 
   const buyCoins = useCallback(async (productId) => {
     if (!connected) {
-      Alert.alert('Store Unavailable', 'Google Play is not available right now.');
+      Alert.alert('Store Unavailable', 'Google Play is not reachable right now.');
       return;
     }
     try {
@@ -139,7 +135,7 @@ export function useIAP() {
 
   const buyVIP = useCallback(async (productId) => {
     if (!connected) {
-      Alert.alert('Store Unavailable', 'Google Play is not available right now.');
+      Alert.alert('Store Unavailable', 'Google Play is not reachable right now.');
       return;
     }
     try {
@@ -155,8 +151,6 @@ export function useIAP() {
 
   return { connected, products, subscriptions, purchasing, buyCoins, buyVIP };
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
 
 async function verifyPurchase(userId, productId, receipt) {
   try {

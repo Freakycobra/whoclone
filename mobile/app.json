@@ -61,7 +61,7 @@
           "locationAlwaysAndWhenInUsePermission": "Allow ConnectNow to use your location for country-based matching."
         }
       ],
-      "expo-iap"
+
     ],
     "extra": {
       "eas": {
