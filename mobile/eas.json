@@ -7,13 +7,15 @@
       "android": {
         "buildType": "apk",
         "credentialsSource": "local"
-      }
+      },
+      "prebuildCommand": "npx expo prebuild --platform android --no-install && sed -i 's/gradle-8.8-all/gradle-8.3-all/' android/gradle/wrapper/gradle-wrapper.properties"
     },
     "production": {
       "android": {
         "buildType": "app-bundle",
         "credentialsSource": "local"
-      }
+      },
+      "prebuildCommand": "npx expo prebuild --platform android --no-install && sed -i 's/gradle-8.8-all/gradle-8.3-all/' android/gradle/wrapper/gradle-wrapper.properties"
     }
   },
   "submit": {
