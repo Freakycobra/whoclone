@@ -13,7 +13,7 @@ const { width } = Dimensions.get('window');
 export default function PremiumScreen({ navigation }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   const { subPlans: plans, loading: pricingLoading } = useRegionalPricing();
-  const currency = plans?.monthly?.currency || '
+  const currency = plans?.monthly?.currency || '$';
 
   return (
     <View style={styles.container}>
