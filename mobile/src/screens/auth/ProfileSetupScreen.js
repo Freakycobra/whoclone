@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, Image, Modal,
+  Platform, PermissionsAndroid,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -162,12 +163,49 @@ export default function ProfileSetupScreen({ navigation }) {
     }
   };
 
-  const openCamera = async () => {
+  const requestCameraPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Camera Permission',
+          message: 'ConnectNow needs access to your camera to take a profile photo.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Deny',
+          buttonPositive: 'Allow',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
+    return status === 'granted';
+  };
+
+  const requestLibraryPermission = async () => {
+    if (Platform.OS === 'android') {
+      // Android 13+ uses READ_MEDIA_IMAGES, older uses READ_EXTERNAL_STORAGE
+      const permission = parseInt(Platform.Version, 10) >= 33
+        ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+        : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+      const granted = await PermissionsAndroid.request(permission, {
+        title: 'Photo Library Permission',
+        message: 'ConnectNow needs access to your photos to set your profile picture.',
+        buttonNeutral: 'Ask Me Later',
+        buttonNegative: 'Deny',
+        buttonPositive: 'Allow',
+      });
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    return status === 'granted';
+  };
+
+  const openCamera = async () => {
+    const granted = await requestCameraPermission();
+    if (!granted) {
       Alert.alert(
         'Camera permission needed',
-        'Go to Settings and allow camera access for ConnectNow.',
+        'Go to Settings > Apps > ConnectNow > Permissions and allow Camera access.',
         [{ text: 'OK' }]
       );
       return;
@@ -181,11 +219,11 @@ export default function ProfileSetupScreen({ navigation }) {
   };
 
   const openLibrary = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+    const granted = await requestLibraryPermission();
+    if (!granted) {
       Alert.alert(
         'Photo access needed',
-        'Go to Settings and allow photo library access for ConnectNow.',
+        'Go to Settings > Apps > ConnectNow > Permissions and allow Photos access.',
         [{ text: 'OK' }]
       );
       return;

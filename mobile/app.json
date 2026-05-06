@@ -27,7 +27,11 @@
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "ios": {
@@ -61,7 +65,13 @@
           "locationAlwaysAndWhenInUsePermission": "Allow ConnectNow to use your location for country-based matching."
         }
       ],
-
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ConnectNow to access your photos to set your profile picture.",
+          "cameraPermission": "Allow ConnectNow to access your camera to take a profile photo."
+        }
+      ]
     ],
     "extra": {
       "eas": {
