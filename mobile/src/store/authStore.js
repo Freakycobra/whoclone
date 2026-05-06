@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants';
 import auth from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { navigationRef } from '../navigation/AppNavigator';
 
 const VIP_KEY = '@connectnow_vip';
 
@@ -109,25 +110,23 @@ export const useAuthStore = create((set, get) => ({
   },
 
   logout: async () => {
-    // Always clear local state first — UI responds immediately
+    // Clear local state immediately — UI reacts right away
     set({ user: null, token: null, isAuthenticated: false });
-    try {
-      await auth().signOut();
-    } catch (e) {
-      // Ignore "no user signed in" — happens if Firebase session already expired
-      if (!String(e).includes('no-current-user')) {
-        console.warn('Firebase signOut error:', e);
-      }
+
+    // Navigate to Splash immediately, don't wait for Firebase/Google
+    if (navigationRef.isReady()) {
+      navigationRef.reset({ index: 0, routes: [{ name: 'Splash' }] });
     }
-    try {
-      // v13+ removed isSignedIn — just call signOut(), it's safe even if not signed in with Google
-      await GoogleSignin.signOut();
-    } catch (e) {
-      // Ignore "not signed in" errors — only warn on unexpected ones
+
+    // Fire-and-forget sign outs — errors are non-blocking
+    auth().signOut().catch((e) => {
+      if (!String(e).includes('no-current-user')) console.warn('Firebase signOut:', e);
+    });
+    GoogleSignin.signOut().catch((e) => {
       if (!String(e).includes('not signed in') && !String(e).includes('SIGN_IN_REQUIRED')) {
-        console.warn('Google signOut error:', e);
+        console.warn('Google signOut:', e);
       }
-    }
+    });
   },
 
   // Spend coins — validates server-side, falls back to local if offline

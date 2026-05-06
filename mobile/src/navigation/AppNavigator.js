@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
@@ -35,6 +35,8 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 import LiveStreamScreen from '../screens/streaming/LiveStreamScreen';
 import FriendsScreen from '../screens/social/FriendsScreen';
 import ChatDMScreen from '../screens/social/ChatDMScreen';
+
+export const navigationRef = createNavigationContainerRef();
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -166,7 +168,7 @@ export default function AppNavigator() {
   const { notification, dismissNotification } = usePushNotifications();
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
