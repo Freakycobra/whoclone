@@ -24,7 +24,15 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
+// Force Kotlin stdlib to 1.9.23 — prevents transitive deps pulling in 2.x
 allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "org.jetbrains.kotlin:kotlin-stdlib:1.9.23"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.23"
+            force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.23"
+        }
+    }
     repositories {
         maven {
             // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
