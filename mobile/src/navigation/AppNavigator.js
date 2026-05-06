@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
@@ -36,7 +36,7 @@ import LiveStreamScreen from '../screens/streaming/LiveStreamScreen';
 import FriendsScreen from '../screens/social/FriendsScreen';
 import ChatDMScreen from '../screens/social/ChatDMScreen';
 
-export const navigationRef = createNavigationContainerRef();
+import { navigationRef } from './navigationRef';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
