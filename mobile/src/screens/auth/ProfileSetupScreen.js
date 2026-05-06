@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, Image, Platform,
+  ScrollView, ActivityIndicator, Alert, Image, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,48 +19,37 @@ const GENDERS = [
   { id: 'nonbinary', label: 'Non-binary', emoji: '🧑' },
 ];
 
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
 async function uploadToCloudinary(uri) {
   const filename = uri.split('/').pop();
   const ext = filename.split('.').pop().toLowerCase();
   const type = ext === 'png' ? 'image/png' : 'image/jpeg';
-
   const formData = new FormData();
   formData.append('file', { uri, name: filename, type });
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
   formData.append('folder', 'connectnow/profiles');
-
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
     { method: 'POST', body: formData }
   );
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Upload failed: ${err}`);
-  }
-
-  const data = await res.json();
-  return data.secure_url;
+  if (!res.ok) throw new Error(`Upload failed: ${await res.text()}`);
+  return (await res.json()).secure_url;
 }
 
-const MONTH_MAP = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-};
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-// Calculate age from DOB string DD/MMM/YYYY (e.g. 15/Jan/2000)
-function calculateAge(dob) {
-  if (!dob) return null;
-  const parts = dob.split('/');
-  if (parts.length !== 3) return null;
-  const [d, mon, y] = parts;
-  const monthIndex = MONTH_MAP[mon.toLowerCase()];
-  if (monthIndex === undefined) return null;
-  const date = new Date(parseInt(y, 10), monthIndex, parseInt(d, 10));
-  if (isNaN(date.getTime())) return null;
+// Returns age as integer, or null if inputs invalid
+function calculateAge(day, month, year) {
+  const d = parseInt(day, 10);
+  const m = MONTHS.indexOf(month);
+  const y = parseInt(year, 10);
+  if (!day || !month || !year) return null;
+  if (isNaN(d) || isNaN(y) || m === -1) return null;
+  if (d < 1 || d > 31 || y < 1900 || y > new Date().getFullYear()) return null;
+  const date = new Date(y, m, d);
+  if (date.getMonth() !== m) return null; // e.g. Feb 30 overflow
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
   const dm = today.getMonth() - date.getMonth();
@@ -68,11 +57,73 @@ function calculateAge(dob) {
   return age;
 }
 
+// ─── Month Picker Modal ───────────────────────────────────────────────────────
+function MonthPickerModal({ visible, selected, onSelect, onClose }) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity style={mp.backdrop} activeOpacity={1} onPress={onClose}>
+        <View style={mp.sheet}>
+          <Text style={mp.title}>Select Month</Text>
+          <View style={mp.grid}>
+            {MONTHS.map((m) => (
+              <TouchableOpacity
+                key={m}
+                style={[mp.chip, selected === m && mp.chipActive]}
+                onPress={() => { onSelect(m); onClose(); }}
+              >
+                <Text style={[mp.chipText, selected === m && mp.chipTextActive]}>{m}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const mp = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  sheet: {
+    width: '80%', backgroundColor: '#1A1A26',
+    borderRadius: 20, padding: 24,
+    borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)',
+  },
+  title: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+  chip: {
+    width: 64, height: 40, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5, borderColor: 'rgba(124,58,237,0.25)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  chipActive: {
+    backgroundColor: 'rgba(124,58,237,0.3)',
+    borderColor: '#7C3AED',
+  },
+  chipText: { color: '#aaa', fontSize: 14, fontWeight: '600' },
+  chipTextActive: { color: '#fff' },
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ProfileSetupScreen({ navigation }) {
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState(null);
-  const [dob, setDob] = useState('');
+
+  // DOB split into 3 parts
+  const [dobDay, setDobDay] = useState('');
+  const [dobMonth, setDobMonth] = useState('');
+  const [dobYear, setDobYear] = useState('');
   const [dobError, setDobError] = useState('');
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+
   const [bio, setBio] = useState('');
   const [photoUri, setPhotoUri] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -81,56 +132,19 @@ export default function ProfileSetupScreen({ navigation }) {
   const [selectedInterests, setSelectedInterests] = useState([]);
   const { updateUser } = useAuthStore();
 
-  const handleDobChange = (text) => {
-    // Format: DD/MMM/YYYY  e.g.  15/Jan/2000
-    // Allow digits and letters (for month abbreviation), plus slashes
-    const cleaned = text.replace(/[^0-9a-zA-Z]/g, '');
-
-    let formatted = cleaned;
-
-    if (cleaned.length === 0) {
-      formatted = '';
-    } else if (cleaned.length <= 2) {
-      // DD part
-      formatted = cleaned;
-    } else if (cleaned.length <= 5) {
-      // DD + up to 3 letters for month
-      const day = cleaned.slice(0, 2);
-      const monRaw = cleaned.slice(2, 5);
-      // Capitalise first letter, lowercase rest
-      const mon = monRaw.length > 0
-        ? monRaw.charAt(0).toUpperCase() + monRaw.slice(1).toLowerCase()
-        : '';
-      formatted = day + '/' + mon;
-    } else {
-      // DD/MMM + up to 4 year digits
-      const day = cleaned.slice(0, 2);
-      const monRaw = cleaned.slice(2, 5);
-      const mon = monRaw.charAt(0).toUpperCase() + monRaw.slice(1).toLowerCase();
-      const year = cleaned.slice(5, 9);
-      formatted = day + '/' + mon + '/' + year;
-    }
-
-    setDob(formatted);
-    setDobError('');
-  };
+  const liveAge = calculateAge(dobDay, dobMonth, dobYear);
+  const dobComplete = dobDay.length >= 1 && dobMonth && dobYear.length === 4;
 
   const validateDob = () => {
-    // Full format: DD/MMM/YYYY → length 11
-    if (!dob || dob.length < 11) {
-      setDobError('Please enter a valid date of birth (DD/MMM/YYYY)');
+    if (!dobDay || !dobMonth || dobYear.length < 4) {
+      setDobError('Please complete your date of birth');
       return false;
     }
-    const age = calculateAge(dob);
-    if (age === null) {
-      setDobError('Invalid date. Use DD/MMM/YYYY format (e.g. 15/Jan/2000)');
+    if (liveAge === null) {
+      setDobError('Invalid date — check day and year');
       return false;
     }
-    if (age < 18) {
-      setDobError('You must be 18 or older to use ConnectNow');
-      return false;
-    }
-    if (age > 100) {
+    if (liveAge > 100) {
       setDobError('Please enter a valid date of birth');
       return false;
     }
@@ -154,23 +168,17 @@ export default function ProfileSetupScreen({ navigation }) {
       Alert.alert('Permission needed', 'Allow photo access to set your profile picture.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: true, aspect: [1, 1], quality: 0.8,
     });
-
     if (!result.canceled && result.assets?.[0]) {
       const uri = result.assets[0].uri;
       setPhotoUri(uri);
       setUploadingPhoto(true);
       try {
-        const url = await uploadToCloudinary(uri);
-        setPhotoUrl(url);
+        setPhotoUrl(await uploadToCloudinary(uri));
       } catch (err) {
-        console.error('Photo upload error:', err);
         Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
         setPhotoUri(null);
       } finally {
@@ -180,36 +188,32 @@ export default function ProfileSetupScreen({ navigation }) {
   };
 
   const handleComplete = async () => {
-    if (!displayName.trim()) {
-      Alert.alert('Required', 'Please enter your display name');
+    if (!displayName.trim()) { Alert.alert('Required', 'Please enter your display name'); return; }
+    if (!gender) { Alert.alert('Required', 'Please select your gender'); return; }
+    if (!validateDob()) return;
+
+    // Under-18 gate
+    if (liveAge < 18) {
+      navigation.replace('UnderAge');
       return;
     }
-    if (!gender) {
-      Alert.alert('Required', 'Please select your gender');
-      return;
-    }
-    if (!validateDob()) {
-      return;
-    }
+
     if (selectedInterests.length < 3) {
       Alert.alert('Pick your interests', 'Select at least 3 interests so we can find better matches!');
       return;
     }
-    const age = calculateAge(dob);
+
+    const age = liveAge;
+    const dob = `${dobDay.padStart(2, '0')}/${dobMonth}/${dobYear}`;
     setLoading(true);
     try {
       const res = await authAPI.setupProfile({
-        displayName,
-        gender,
-        age,
-        dob,
-        bio,
+        displayName, gender, age, dob, bio,
         photoUrl: photoUrl || null,
         interests: selectedInterests,
       });
       updateUser(res.data.user);
-    } catch (err) {
-      // Backend may not be configured yet — update local state
+    } catch {
       updateUser({ displayName, gender, age, dob, bio, photoUrl, interests: selectedInterests, coins: 100, diamonds: 0, isVip: false });
     } finally {
       setLoading(false);
@@ -220,6 +224,14 @@ export default function ProfileSetupScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#0A0A0F', '#13131A']} style={StyleSheet.absoluteFill} />
+
+      <MonthPickerModal
+        visible={monthPickerOpen}
+        selected={dobMonth}
+        onSelect={setDobMonth}
+        onClose={() => setMonthPickerOpen(false)}
+      />
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
@@ -250,7 +262,7 @@ export default function ProfileSetupScreen({ navigation }) {
         </TouchableOpacity>
         <Text style={styles.photoHint}>Tap to add profile photo</Text>
 
-        {/* Display name */}
+        {/* Display Name */}
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>Display Name</Text>
           <TextInput
@@ -286,20 +298,50 @@ export default function ProfileSetupScreen({ navigation }) {
         {/* Date of Birth */}
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>Date of Birth</Text>
-          <TextInput
-            style={[styles.input, dobError ? styles.inputError : null]}
-            placeholder="DD/MMM/YYYY"
-            placeholderTextColor={colors.textMuted}
-            value={dob}
-            onChangeText={handleDobChange}
-            keyboardType="default"
-            autoCapitalize="words"
-            maxLength={11}
-          />
+          <View style={styles.dobRow}>
+            {/* Day */}
+            <TextInput
+              style={[styles.dobInput, styles.dobDay, dobError && styles.inputError]}
+              placeholder="DD"
+              placeholderTextColor={colors.textMuted}
+              value={dobDay}
+              onChangeText={(t) => { setDobDay(t.replace(/[^0-9]/g, '').slice(0, 2)); setDobError(''); }}
+              keyboardType="number-pad"
+              maxLength={2}
+            />
+
+            {/* Month dropdown trigger */}
+            <TouchableOpacity
+              style={[styles.dobInput, styles.dobMonth, dobError && styles.inputError]}
+              onPress={() => setMonthPickerOpen(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={dobMonth ? styles.dobMonthText : styles.dobMonthPlaceholder}>
+                {dobMonth || 'MMM'}
+              </Text>
+              <Text style={styles.dobDropIcon}>▾</Text>
+            </TouchableOpacity>
+
+            {/* Year */}
+            <TextInput
+              style={[styles.dobInput, styles.dobYear, dobError && styles.inputError]}
+              placeholder="YYYY"
+              placeholderTextColor={colors.textMuted}
+              value={dobYear}
+              onChangeText={(t) => { setDobYear(t.replace(/[^0-9]/g, '').slice(0, 4)); setDobError(''); }}
+              keyboardType="number-pad"
+              maxLength={4}
+            />
+          </View>
+
           {dobError ? (
             <Text style={styles.errorText}>{dobError}</Text>
-          ) : dob.length === 11 && calculateAge(dob) !== null ? (
-            <Text style={styles.ageHint}>Age: {calculateAge(dob)} years old</Text>
+          ) : dobComplete && liveAge !== null ? (
+            <Text style={[styles.ageHint, liveAge < 18 && styles.ageHintWarn]}>
+              {liveAge < 18
+                ? `Age: ${liveAge} — you must be 18+ to continue`
+                : `Age: ${liveAge} years old ✓`}
+            </Text>
           ) : null}
         </View>
 
@@ -342,22 +384,15 @@ export default function ProfileSetupScreen({ navigation }) {
         </View>
 
         {/* CTA */}
-        <TouchableOpacity
-          onPress={handleComplete}
-          disabled={loading || uploadingPhoto}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity onPress={handleComplete} disabled={loading || uploadingPhoto} activeOpacity={0.85}>
           <LinearGradient
             colors={['#7C3AED', '#EC4899']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={[styles.ctaButton, uploadingPhoto && { opacity: 0.6 }]}
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.ctaText}>
-                  {uploadingPhoto ? 'Uploading photo...' : 'Continue →'}
-                </Text>
+              : <Text style={styles.ctaText}>{uploadingPhoto ? 'Uploading photo...' : 'Continue →'}</Text>
             }
           </LinearGradient>
         </TouchableOpacity>
@@ -373,27 +408,15 @@ const styles = StyleSheet.create({
   step: { color: colors.primary, fontSize: 13, fontWeight: '700', marginBottom: 8, letterSpacing: 1 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 8 },
   subtitle: { color: colors.textSecondary, fontSize: 15 },
-  avatarContainer: {
-    alignSelf: 'center',
-    marginBottom: 8,
-    position: 'relative',
-  },
-  avatarImageWrapper: {
-    width: 100, height: 100, borderRadius: 50, overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 100, height: 100, borderRadius: 50,
-  },
+  avatarContainer: { alignSelf: 'center', marginBottom: 8, position: 'relative' },
+  avatarImageWrapper: { width: 100, height: 100, borderRadius: 50, overflow: 'hidden' },
+  avatarImage: { width: 100, height: 100, borderRadius: 50 },
   uploadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarGradient: {
-    width: 100, height: 100, borderRadius: 50,
     alignItems: 'center', justifyContent: 'center',
   },
+  avatarGradient: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center' },
   avatarPlaceholder: { fontSize: 40 },
   avatarBadge: {
     position: 'absolute', bottom: 0, right: 0,
@@ -407,9 +430,11 @@ const styles = StyleSheet.create({
   fieldContainer: { marginBottom: 24 },
   fieldLabel: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 12 },
   fieldHint: { color: colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'right' },
+  fieldHint2: { color: colors.textMuted, fontSize: 12, marginBottom: 12 },
   inputError: { borderColor: '#FF4C4C' },
   errorText: { color: '#FF4C4C', fontSize: 12, marginTop: 6 },
   ageHint: { color: colors.primary, fontSize: 12, marginTop: 6 },
+  ageHintWarn: { color: '#FF9500' },
   input: {
     borderWidth: 1.5,
     borderColor: 'rgba(124,58,237,0.3)',
@@ -418,41 +443,52 @@ const styles = StyleSheet.create({
     padding: 16, color: '#fff', fontSize: 15,
   },
   bioInput: { height: 90, textAlignVertical: 'top' },
+
+  // DOB row
+  dobRow: { flexDirection: 'row', gap: 10 },
+  dobInput: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(124,58,237,0.3)',
+    borderRadius: 14,
+    backgroundColor: colors.backgroundSecondary,
+    height: 54,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dobDay: { width: 62, textAlign: 'center', color: '#fff', fontSize: 16 },
+  dobMonth: { flex: 1, flexDirection: 'row', paddingHorizontal: 12 },
+  dobMonthText: { color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 },
+  dobMonthPlaceholder: { color: colors.textMuted, fontSize: 15, flex: 1 },
+  dobDropIcon: { color: colors.textMuted, fontSize: 14 },
+  dobYear: { width: 80, textAlign: 'center', color: '#fff', fontSize: 16 },
+
+  // Gender
   genderRow: { flexDirection: 'row', gap: 12 },
   genderButton: {
-    flex: 1,
-    borderWidth: 1.5, borderColor: colors.cardBorder,
+    flex: 1, borderWidth: 1.5, borderColor: colors.cardBorder,
     borderRadius: 14, padding: 16, alignItems: 'center',
     backgroundColor: colors.backgroundSecondary,
   },
-  genderButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(124,58,237,0.15)',
-  },
+  genderButtonActive: { borderColor: colors.primary, backgroundColor: 'rgba(124,58,237,0.15)' },
   genderEmoji: { fontSize: 28, marginBottom: 6 },
   genderLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   genderLabelActive: { color: colors.primary },
-  ctaButton: {
-    height: 56, borderRadius: 28,
-    alignItems: 'center', justifyContent: 'center', marginTop: 8,
-  },
-  ctaText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  fieldHint2: { color: colors.textMuted, fontSize: 12, marginBottom: 12 },
+
+  // Interests
   interestsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   interestChip: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 20, borderWidth: 1.5,
     borderColor: colors.cardBorder,
-    backgroundColor: colors.backgroundSecondary,
-    marginBottom: 4,
+    backgroundColor: colors.backgroundSecondary, marginBottom: 4,
   },
-  interestChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(124,58,237,0.18)',
-  },
+  interestChipActive: { borderColor: colors.primary, backgroundColor: 'rgba(124,58,237,0.18)' },
   interestEmoji: { fontSize: 16, marginRight: 6 },
   interestLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   interestLabelActive: { color: colors.primary },
   interestCount: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'right' },
+
+  // CTA
+  ctaButton: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  ctaText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

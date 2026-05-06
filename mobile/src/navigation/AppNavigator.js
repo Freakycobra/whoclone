@@ -14,6 +14,7 @@ import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import PhoneAuthScreen from '../screens/auth/PhoneAuthScreen';
 import ProfileSetupScreen from '../screens/auth/ProfileSetupScreen';
 import AgeVerificationScreen from '../screens/auth/AgeVerificationScreen';
+import UnderAgeScreen from '../screens/auth/UnderAgeScreen';
 
 // Main screens
 import HomeScreen from '../screens/main/HomeScreen';
@@ -172,6 +173,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PhoneAuth" component={PhoneAuthScreen} />
         <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
         <Stack.Screen name="AgeVerification" component={AgeVerificationScreen} />
+        <Stack.Screen name="UnderAge" component={UnderAgeScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen
           name="VideoChat"
