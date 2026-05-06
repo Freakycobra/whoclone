@@ -26,7 +26,10 @@ const COUNTRY_CODES = [
 // Web client ID from google-services.json (type 3 oauth client)
 const WEB_CLIENT_ID = '60549687002-1m5oj7s4m53bpg1rbh8cdoddcaha827d.apps.googleusercontent.com';
 
-GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
+GoogleSignin.configure({
+  webClientId: WEB_CLIENT_ID,
+  forceCodeForRefreshToken: true,
+});
 
 export default function PhoneAuthScreen({ navigation }) {
   const [step, setStep] = useState('phone');
@@ -100,6 +103,8 @@ export default function PhoneAuthScreen({ navigation }) {
     setLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
+      // Always sign out first so the account picker shows every time
+      await GoogleSignin.signOut().catch(() => {});
       const userInfo = await GoogleSignin.signIn();
       const googleCredential = auth.GoogleAuthProvider.credential(userInfo.data?.idToken || userInfo.idToken);
       const result = await auth().signInWithCredential(googleCredential);
