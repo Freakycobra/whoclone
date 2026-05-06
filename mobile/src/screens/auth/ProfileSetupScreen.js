@@ -149,10 +149,45 @@ export default function ProfileSetupScreen({ navigation }) {
     return true;
   };
 
-  const pickPhoto = async () => {
+  const launchWithUri = async (uri) => {
+    setPhotoUri(uri);
+    setUploadingPhoto(true);
+    try {
+      setPhotoUrl(await uploadToCloudinary(uri));
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
+      setPhotoUri(null);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Camera permission needed',
+        'Go to Settings and allow camera access for ConnectNow.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true, aspect: [1, 1], quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      await launchWithUri(result.assets[0].uri);
+    }
+  };
+
+  const openLibrary = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo access to set your profile picture.');
+      Alert.alert(
+        'Photo access needed',
+        'Go to Settings and allow photo library access for ConnectNow.',
+        [{ text: 'OK' }]
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -160,18 +195,21 @@ export default function ProfileSetupScreen({ navigation }) {
       allowsEditing: true, aspect: [1, 1], quality: 0.8,
     });
     if (!result.canceled && result.assets?.[0]) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      setUploadingPhoto(true);
-      try {
-        setPhotoUrl(await uploadToCloudinary(uri));
-      } catch (err) {
-        Alert.alert('Upload failed', 'Could not upload photo. Please try again.');
-        setPhotoUri(null);
-      } finally {
-        setUploadingPhoto(false);
-      }
+      await launchWithUri(result.assets[0].uri);
     }
+  };
+
+  const pickPhoto = () => {
+    Alert.alert(
+      'Profile Photo',
+      'Choose how to add your photo',
+      [
+        { text: 'Take a Photo', onPress: openCamera },
+        { text: 'Choose from Library', onPress: openLibrary },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleComplete = async () => {
