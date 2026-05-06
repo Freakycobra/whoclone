@@ -18,8 +18,7 @@ export default function CoinStoreScreen({ navigation }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
 
   const { packs, subPlans: plans, loading: pricingLoading } = useRegionalPricing();
-  const currency = packs[0]?.currency || '
-
+  const currency = packs[0]?.currency || '$';
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#0A0A0F', '#13131A']} style={StyleSheet.absoluteFill} />
@@ -402,8 +401,7 @@ const styles = StyleSheet.create({
       // Dev / no Play Services fallback
       Alert.alert(
         `Buy ${pack.coins} Coins`,
-        `Price: ${pack.currency || '
-
+        `Price: ${pack.currency || '$';
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#0A0A0F', '#13131A']} style={StyleSheet.absoluteFill} />
@@ -790,8 +788,7 @@ const styles = StyleSheet.create({
     if (!connected) {
       Alert.alert(
         'Get VIP',
-        `${plan.label || 'VIP'}: ${plan.currency || '
-
+        `${plan.label || 'VIP'}: ${plan.currency || '$';
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#0A0A0F', '#13131A']} style={StyleSheet.absoluteFill} />
