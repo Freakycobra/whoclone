@@ -114,7 +114,10 @@ export const useAuthStore = create((set, get) => ({
     try {
       await auth().signOut();
     } catch (e) {
-      console.warn('Firebase signOut error:', e);
+      // Ignore "no user signed in" — happens if Firebase session already expired
+      if (!String(e).includes('no-current-user')) {
+        console.warn('Firebase signOut error:', e);
+      }
     }
     try {
       // v13+ removed isSignedIn — just call signOut(), it's safe even if not signed in with Google
