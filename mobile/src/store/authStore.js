@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants';
+import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const VIP_KEY = '@connectnow_vip';
 
@@ -106,7 +108,22 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  logout: () => set({ user: null, token: null, isAuthenticated: false }),
+  logout: async () => {
+    try {
+      // Sign out from Firebase
+      await auth().signOut();
+    } catch (e) {
+      console.warn('Firebase signOut error:', e);
+    }
+    try {
+      // Sign out from Google (no-op if user didn't sign in with Google)
+      const isSignedIn = await GoogleSignin.isSignedIn();
+      if (isSignedIn) await GoogleSignin.signOut();
+    } catch (e) {
+      console.warn('Google signOut error:', e);
+    }
+    set({ user: null, token: null, isAuthenticated: false });
+  },
 
   // Spend coins — validates server-side, falls back to local if offline
   spendCoins: async (amount, reason = 'feature') => {

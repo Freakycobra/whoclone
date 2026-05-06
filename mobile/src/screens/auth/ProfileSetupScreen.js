@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, Image,
+  ScrollView, ActivityIndicator, Alert, Image, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,8 +18,6 @@ const GENDERS = [
   { id: 'female', label: 'Female', emoji: '👩' },
   { id: 'nonbinary', label: 'Non-binary', emoji: '🧑' },
 ];
-
-const AGE_RANGE = Array.from({ length: 63 }, (_, i) => i + 18);
 
 async function uploadToCloudinary(uri) {
   const filename = uri.split('/').pop();
@@ -45,10 +43,30 @@ async function uploadToCloudinary(uri) {
   return data.secure_url;
 }
 
+// Calculate age from DOB string (YYYY-MM-DD or DD/MM/YYYY)
+function calculateAge(dob) {
+  if (!dob) return null;
+  // Try DD/MM/YYYY first
+  let date;
+  if (dob.includes('/')) {
+    const [d, m, y] = dob.split('/');
+    date = new Date(`${y}-${m}-${d}`);
+  } else {
+    date = new Date(dob);
+  }
+  if (isNaN(date.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const m = today.getMonth() - date.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < date.getDate())) age--;
+  return age;
+}
+
 export default function ProfileSetupScreen({ navigation }) {
   const [displayName, setDisplayName] = useState('');
   const [gender, setGender] = useState(null);
-  const [age, setAge] = useState(22);
+  const [dob, setDob] = useState('');
+  const [dobError, setDobError] = useState('');
   const [bio, setBio] = useState('');
   const [photoUri, setPhotoUri] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -56,6 +74,40 @@ export default function ProfileSetupScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState([]);
   const { updateUser } = useAuthStore();
+
+  const handleDobChange = (text) => {
+    // Auto-format as DD/MM/YYYY
+    const cleaned = text.replace(/[^0-9]/g, '');
+    let formatted = cleaned;
+    if (cleaned.length >= 3 && cleaned.length <= 4) {
+      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
+    } else if (cleaned.length >= 5) {
+      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4) + '/' + cleaned.slice(4, 8);
+    }
+    setDob(formatted);
+    setDobError('');
+  };
+
+  const validateDob = () => {
+    const age = calculateAge(dob);
+    if (!dob || dob.length < 8) {
+      setDobError('Please enter a valid date of birth (DD/MM/YYYY)');
+      return false;
+    }
+    if (age === null) {
+      setDobError('Invalid date. Use DD/MM/YYYY format');
+      return false;
+    }
+    if (age < 18) {
+      setDobError('You must be 18 or older to use ConnectNow');
+      return false;
+    }
+    if (age > 100) {
+      setDobError('Please enter a valid date of birth');
+      return false;
+    }
+    return true;
+  };
 
   const toggleInterest = (id) => {
     setSelectedInterests(prev => {
@@ -108,16 +160,21 @@ export default function ProfileSetupScreen({ navigation }) {
       Alert.alert('Required', 'Please select your gender');
       return;
     }
+    if (!validateDob()) {
+      return;
+    }
     if (selectedInterests.length < 3) {
       Alert.alert('Pick your interests', 'Select at least 3 interests so we can find better matches!');
       return;
     }
+    const age = calculateAge(dob);
     setLoading(true);
     try {
       const res = await authAPI.setupProfile({
         displayName,
         gender,
         age,
+        dob,
         bio,
         photoUrl: photoUrl || null,
         interests: selectedInterests,
@@ -125,7 +182,7 @@ export default function ProfileSetupScreen({ navigation }) {
       updateUser(res.data.user);
     } catch (err) {
       // Backend may not be configured yet — update local state
-      updateUser({ displayName, gender, age, bio, photoUrl, interests: selectedInterests, coins: 100, diamonds: 0, isVip: false });
+      updateUser({ displayName, gender, age, dob, bio, photoUrl, interests: selectedInterests, coins: 100, diamonds: 0, isVip: false });
     } finally {
       setLoading(false);
       navigation.replace('AgeVerification');
@@ -198,20 +255,23 @@ export default function ProfileSetupScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Age */}
+        {/* Date of Birth */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Age: {age}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ageScroll}>
-            {AGE_RANGE.map((a) => (
-              <TouchableOpacity
-                key={a}
-                style={[styles.ageChip, age === a && styles.ageChipActive]}
-                onPress={() => setAge(a)}
-              >
-                <Text style={[styles.ageChipText, age === a && styles.ageChipTextActive]}>{a}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <Text style={styles.fieldLabel}>Date of Birth</Text>
+          <TextInput
+            style={[styles.input, dobError ? styles.inputError : null]}
+            placeholder="DD/MM/YYYY"
+            placeholderTextColor={colors.textMuted}
+            value={dob}
+            onChangeText={handleDobChange}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          {dobError ? (
+            <Text style={styles.errorText}>{dobError}</Text>
+          ) : dob.length === 10 && calculateAge(dob) !== null ? (
+            <Text style={styles.ageHint}>Age: {calculateAge(dob)} years old</Text>
+          ) : null}
         </View>
 
         {/* Bio */}
@@ -318,6 +378,9 @@ const styles = StyleSheet.create({
   fieldContainer: { marginBottom: 24 },
   fieldLabel: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 12 },
   fieldHint: { color: colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'right' },
+  inputError: { borderColor: '#FF4C4C' },
+  errorText: { color: '#FF4C4C', fontSize: 12, marginTop: 6 },
+  ageHint: { color: colors.primary, fontSize: 12, marginTop: 6 },
   input: {
     borderWidth: 1.5,
     borderColor: 'rgba(124,58,237,0.3)',
@@ -340,19 +403,6 @@ const styles = StyleSheet.create({
   genderEmoji: { fontSize: 28, marginBottom: 6 },
   genderLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   genderLabelActive: { color: colors.primary },
-  ageScroll: { flexGrow: 0 },
-  ageChip: {
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1, borderColor: colors.cardBorder, marginRight: 8,
-  },
-  ageChipActive: {
-    backgroundColor: 'rgba(124,58,237,0.2)',
-    borderColor: colors.primary,
-  },
-  ageChipText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  ageChipTextActive: { color: colors.primary },
   ctaButton: {
     height: 56, borderRadius: 28,
     alignItems: 'center', justifyContent: 'center', marginTop: 8,
