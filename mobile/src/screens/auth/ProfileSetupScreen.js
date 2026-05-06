@@ -43,22 +43,28 @@ async function uploadToCloudinary(uri) {
   return data.secure_url;
 }
 
-// Calculate age from DOB string (YYYY-MM-DD or DD/MM/YYYY)
+const MONTH_MAP = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Calculate age from DOB string DD/MMM/YYYY (e.g. 15/Jan/2000)
 function calculateAge(dob) {
   if (!dob) return null;
-  // Try DD/MM/YYYY first
-  let date;
-  if (dob.includes('/')) {
-    const [d, m, y] = dob.split('/');
-    date = new Date(`${y}-${m}-${d}`);
-  } else {
-    date = new Date(dob);
-  }
+  const parts = dob.split('/');
+  if (parts.length !== 3) return null;
+  const [d, mon, y] = parts;
+  const monthIndex = MONTH_MAP[mon.toLowerCase()];
+  if (monthIndex === undefined) return null;
+  const date = new Date(parseInt(y, 10), monthIndex, parseInt(d, 10));
   if (isNaN(date.getTime())) return null;
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
-  const m = today.getMonth() - date.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < date.getDate())) age--;
+  const dm = today.getMonth() - date.getMonth();
+  if (dm < 0 || (dm === 0 && today.getDate() < date.getDate())) age--;
   return age;
 }
 
@@ -76,26 +82,48 @@ export default function ProfileSetupScreen({ navigation }) {
   const { updateUser } = useAuthStore();
 
   const handleDobChange = (text) => {
-    // Auto-format as DD/MM/YYYY
-    const cleaned = text.replace(/[^0-9]/g, '');
+    // Format: DD/MMM/YYYY  e.g.  15/Jan/2000
+    // Allow digits and letters (for month abbreviation), plus slashes
+    const cleaned = text.replace(/[^0-9a-zA-Z]/g, '');
+
     let formatted = cleaned;
-    if (cleaned.length >= 3 && cleaned.length <= 4) {
-      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
-    } else if (cleaned.length >= 5) {
-      formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4) + '/' + cleaned.slice(4, 8);
+
+    if (cleaned.length === 0) {
+      formatted = '';
+    } else if (cleaned.length <= 2) {
+      // DD part
+      formatted = cleaned;
+    } else if (cleaned.length <= 5) {
+      // DD + up to 3 letters for month
+      const day = cleaned.slice(0, 2);
+      const monRaw = cleaned.slice(2, 5);
+      // Capitalise first letter, lowercase rest
+      const mon = monRaw.length > 0
+        ? monRaw.charAt(0).toUpperCase() + monRaw.slice(1).toLowerCase()
+        : '';
+      formatted = day + '/' + mon;
+    } else {
+      // DD/MMM + up to 4 year digits
+      const day = cleaned.slice(0, 2);
+      const monRaw = cleaned.slice(2, 5);
+      const mon = monRaw.charAt(0).toUpperCase() + monRaw.slice(1).toLowerCase();
+      const year = cleaned.slice(5, 9);
+      formatted = day + '/' + mon + '/' + year;
     }
+
     setDob(formatted);
     setDobError('');
   };
 
   const validateDob = () => {
-    const age = calculateAge(dob);
-    if (!dob || dob.length < 8) {
-      setDobError('Please enter a valid date of birth (DD/MM/YYYY)');
+    // Full format: DD/MMM/YYYY → length 11
+    if (!dob || dob.length < 11) {
+      setDobError('Please enter a valid date of birth (DD/MMM/YYYY)');
       return false;
     }
+    const age = calculateAge(dob);
     if (age === null) {
-      setDobError('Invalid date. Use DD/MM/YYYY format');
+      setDobError('Invalid date. Use DD/MMM/YYYY format (e.g. 15/Jan/2000)');
       return false;
     }
     if (age < 18) {
@@ -260,16 +288,17 @@ export default function ProfileSetupScreen({ navigation }) {
           <Text style={styles.fieldLabel}>Date of Birth</Text>
           <TextInput
             style={[styles.input, dobError ? styles.inputError : null]}
-            placeholder="DD/MM/YYYY"
+            placeholder="DD/MMM/YYYY"
             placeholderTextColor={colors.textMuted}
             value={dob}
             onChangeText={handleDobChange}
-            keyboardType="numeric"
-            maxLength={10}
+            keyboardType="default"
+            autoCapitalize="words"
+            maxLength={11}
           />
           {dobError ? (
             <Text style={styles.errorText}>{dobError}</Text>
-          ) : dob.length === 10 && calculateAge(dob) !== null ? (
+          ) : dob.length === 11 && calculateAge(dob) !== null ? (
             <Text style={styles.ageHint}>Age: {calculateAge(dob)} years old</Text>
           ) : null}
         </View>
