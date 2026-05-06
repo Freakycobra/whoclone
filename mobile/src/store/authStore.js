@@ -109,20 +109,22 @@ export const useAuthStore = create((set, get) => ({
   },
 
   logout: async () => {
+    // Always clear local state first — UI responds immediately
+    set({ user: null, token: null, isAuthenticated: false });
     try {
-      // Sign out from Firebase
       await auth().signOut();
     } catch (e) {
       console.warn('Firebase signOut error:', e);
     }
     try {
-      // Sign out from Google (no-op if user didn't sign in with Google)
-      const isSignedIn = await GoogleSignin.isSignedIn();
-      if (isSignedIn) await GoogleSignin.signOut();
+      // v13+ removed isSignedIn — just call signOut(), it's safe even if not signed in with Google
+      await GoogleSignin.signOut();
     } catch (e) {
-      console.warn('Google signOut error:', e);
+      // Ignore "not signed in" errors — only warn on unexpected ones
+      if (!String(e).includes('not signed in') && !String(e).includes('SIGN_IN_REQUIRED')) {
+        console.warn('Google signOut error:', e);
+      }
     }
-    set({ user: null, token: null, isAuthenticated: false });
   },
 
   // Spend coins — validates server-side, falls back to local if offline
