@@ -47,9 +47,28 @@ export default function LiveStreamScreen({ navigation }) {
     } catch (e) {}
   };
 
-  const startLive = () => {
-    if (hasCameraPermission === false || hasMicPermission === false) {
-      Alert.alert('Permissions Required', 'Camera and microphone access are needed to go live.');
+  const startLive = async () => {
+    // If permissions haven't been granted yet, request them then proceed
+    let camOk = hasCameraPermission;
+    let micOk = hasMicPermission;
+
+    if (!camOk || !micOk) {
+      try {
+        const cam = await Camera.requestCameraPermissionsAsync();
+        camOk = cam.status === 'granted';
+        setHasCameraPermission(camOk);
+        const mic = await Camera.requestMicrophonePermissionsAsync();
+        micOk = mic.status === 'granted';
+        setHasMicPermission(micOk);
+      } catch (e) {}
+    }
+
+    if (!camOk || !micOk) {
+      Alert.alert(
+        'Permissions Required',
+        'Camera and microphone access are needed to go live. Please grant them in your device Settings.',
+        [{ text: 'OK' }]
+      );
       return;
     }
     setIsLive(true);

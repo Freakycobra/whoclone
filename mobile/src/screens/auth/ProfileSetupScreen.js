@@ -276,7 +276,7 @@ export default function ProfileSetupScreen({ navigation }) {
         photoUrl: photoUrl || null,
       });
       updateUser(res.data.user);
-      navigation.replace('AgeVerification');
+      navigation.replace('MainTabs');
     } catch (err) {
       const data = err?.response?.data;
       if (data?.error === 'display_name_flagged') {
@@ -296,7 +296,7 @@ export default function ProfileSetupScreen({ navigation }) {
       }
       // Backend not reachable — save locally and continue
       updateUser({ displayName, gender, age, dob, bio, photoUrl, coins: 100, diamonds: 0, isVip: false });
-      navigation.replace('AgeVerification');
+      navigation.replace('MainTabs');
     } finally {
       setLoading(false);
     }
