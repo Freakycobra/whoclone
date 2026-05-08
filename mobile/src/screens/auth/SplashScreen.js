@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../theme/colors';
 
 export default function SplashScreen({ navigation }) {
@@ -13,8 +14,13 @@ export default function SplashScreen({ navigation }) {
       Animated.spring(scale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
     ]).start();
 
-    const timer = setTimeout(() => {
-      navigation.replace('Onboarding');
+    const timer = setTimeout(async () => {
+      try {
+        const done = await AsyncStorage.getItem('@connectnow_onboarding_done');
+        navigation.replace(done ? 'PhoneAuth' : 'Onboarding');
+      } catch {
+        navigation.replace('Onboarding');
+      }
     }, 2200);
 
     return () => clearTimeout(timer);

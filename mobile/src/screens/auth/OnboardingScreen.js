@@ -4,6 +4,7 @@ import {
   Dimensions, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../theme/colors';
 
 const { width, height } = Dimensions.get('window');
@@ -43,12 +44,17 @@ export default function OnboardingScreen({ navigation }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef(null);
 
+  const finishOnboarding = async () => {
+    try { await AsyncStorage.setItem('@connectnow_onboarding_done', '1'); } catch {}
+    navigation.replace('PhoneAuth');
+  };
+
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
       flatListRef.current.scrollToIndex({ index: currentIndex + 1 });
       setCurrentIndex(currentIndex + 1);
     } else {
-      navigation.replace('PhoneAuth');
+      finishOnboarding();
     }
   };
 
@@ -112,7 +118,7 @@ export default function OnboardingScreen({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.replace('PhoneAuth')}
+          onPress={finishOnboarding}
           style={styles.skipButton}
         >
           <Text style={styles.skipText}>Skip</Text>

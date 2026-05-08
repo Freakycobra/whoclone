@@ -10,6 +10,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useFollowStore } from '../../store/followStore';
 import { useFriendStore } from '../../store/friendStore';
 import { socketService } from '../../api/socket';
+import { moderationAPI } from '../../api/moderation';
 import { REACTIONS, GIFTS, API_BASE_URL } from '../../constants';
 import ReportModal from '../../components/ReportModal';
 
@@ -260,12 +261,21 @@ export default function VideoChatScreen({ navigation }) {
   };
 
   // ── Chat & interactions ───────────────────────────────────────────────────
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const text = chatText.trim();
     if (!text) return;
+    setChatText('');
+    try {
+      const res = await moderationAPI.checkText(text);
+      if (res?.data?.flagged) {
+        addMessage({ text: '⚠️ Message blocked: ' + (res.data.reason || 'content policy violation'), sender: 'system', time: new Date() });
+        return;
+      }
+    } catch {
+      // fail open — API down, allow message through
+    }
     addMessage({ text, sender: 'me', time: new Date() });
     socketService.sendMessage(sessionIdRef.current, text);
-    setChatText('');
   };
 
   const handleSendReaction = (reaction) => {

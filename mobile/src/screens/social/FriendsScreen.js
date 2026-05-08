@@ -7,11 +7,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useFriendStore } from '../../store/friendStore';
+import ReportModal from '../../components/ReportModal';
 
 export default function FriendsScreen({ navigation }) {
   const { user } = useAuthStore();
   const { friends, pending, loading, loadFriends, acceptRequest, declineRequest, removeFriend } = useFriendStore();
   const [tab, setTab] = useState('friends'); // 'friends' | 'pending'
+  const [reportTarget, setReportTarget] = useState(null); // { id, name }
 
   useEffect(() => {
     if (user?.uid) loadFriends(user.uid);
@@ -41,6 +43,9 @@ export default function FriendsScreen({ navigation }) {
           onPress={() => navigation.navigate('ChatDM', { friendId: item.id })}
         >
           <Text style={styles.dmBtnText}>💬 DM</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.reportBtn} onPress={() => setReportTarget({ id: item.id, name: item.displayName || item.id?.slice(0, 12) })}>
+          <Text style={styles.reportBtnText}>⚑</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item.id)}>
           <Text style={styles.removeBtnText}>✕</Text>
@@ -124,6 +129,15 @@ export default function FriendsScreen({ navigation }) {
           }
         />
       )}
+
+      {reportTarget && (
+        <ReportModal
+          visible={!!reportTarget}
+          onClose={() => setReportTarget(null)}
+          reportedUserId={reportTarget.id}
+          reportedUserName={reportTarget.name}
+        />
+      )}
     </View>
   );
 }
@@ -165,6 +179,8 @@ const styles = StyleSheet.create({
   dmBtnText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
   acceptBtn: { backgroundColor: 'rgba(16,185,129,0.2)', borderRadius: 10, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.success },
   acceptBtnText: { color: colors.success, fontSize: 16, fontWeight: '700' },
+  reportBtn: { backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: 10, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
+  reportBtnText: { color: '#f59e0b', fontSize: 16, fontWeight: '700' },
   removeBtn: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 10, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
   removeBtnText: { color: colors.error || '#ef4444', fontSize: 14, fontWeight: '700' },
   empty: { alignItems: 'center', paddingTop: 60 },

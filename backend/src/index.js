@@ -19,6 +19,7 @@ const friendsRouter    = require('./routes/friends');
 const purchasesRouter  = require('./routes/purchases');
 const subscriptionsRouter = require('./routes/subscriptions');
 const { router: moderationRouter, reports: reportStore } = require('./routes/moderation');
+const adminRouter = require('./routes/admin');
 
 const app    = express();
 const server = http.createServer(app);
@@ -48,6 +49,8 @@ app.use('/friends',         friendsRouter);
 app.use('/purchases',       purchasesRouter);
 app.use('/subscriptions',   subscriptionsRouter);
 app.use('/moderation',      moderationRouter);
+adminRouter.init(reportStore, () => ({ online: io.engine.clientsCount, queued: matchingQueue.size, matched: activeMatches.size * 2, live: liveStreams.size }));
+app.use('/admin',           adminRouter);
 
 // ─── FCM SEND HELPER ─────────────────────────────────────────────────────────
 // Uses firebase-admin if GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT is set.
