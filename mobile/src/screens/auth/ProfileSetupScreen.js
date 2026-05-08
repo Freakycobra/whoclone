@@ -123,6 +123,9 @@ export default function ProfileSetupScreen({ navigation }) {
   const [dobYear, setDobYear] = useState('');
   const [dobError, setDobError] = useState('');
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [bioError, setBioError] = useState('');
+  const [photoError, setPhotoError] = useState('');
 
   const [bio, setBio] = useState('');
   const [photoUri, setPhotoUri] = useState(null);
@@ -251,6 +254,9 @@ export default function ProfileSetupScreen({ navigation }) {
   };
 
   const handleComplete = async () => {
+    // Reset moderation errors
+    setNameError(''); setBioError(''); setPhotoError('');
+
     if (!displayName.trim()) { Alert.alert('Required', 'Please enter your display name'); return; }
     if (!gender) { Alert.alert('Required', 'Please select your gender'); return; }
     if (!validateDob()) return;
@@ -270,11 +276,29 @@ export default function ProfileSetupScreen({ navigation }) {
         photoUrl: photoUrl || null,
       });
       updateUser(res.data.user);
-    } catch {
+      navigation.replace('AgeVerification');
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.error === 'display_name_flagged') {
+        setNameError(data.message);
+        setLoading(false);
+        return;
+      }
+      if (data?.error === 'bio_flagged') {
+        setBioError(data.message);
+        setLoading(false);
+        return;
+      }
+      if (data?.error === 'photo_flagged') {
+        setPhotoError(data.message);
+        setLoading(false);
+        return;
+      }
+      // Backend not reachable — save locally and continue
       updateUser({ displayName, gender, age, dob, bio, photoUrl, coins: 100, diamonds: 0, isVip: false });
+      navigation.replace('AgeVerification');
     } finally {
       setLoading(false);
-      navigation.replace('AgeVerification');
     }
   };
 
@@ -318,19 +342,23 @@ export default function ProfileSetupScreen({ navigation }) {
           </View>
         </TouchableOpacity>
         <Text style={styles.photoHint}>Tap to add profile photo</Text>
+        {photoError ? <Text style={styles.moderationError}>{photoError}</Text> : null}
 
         {/* Display Name */}
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>Display Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, nameError && styles.inputError]}
             placeholder="How should people call you?"
             placeholderTextColor={colors.textMuted}
             value={displayName}
-            onChangeText={setDisplayName}
+            onChangeText={(t) => { setDisplayName(t); setNameError(''); }}
             maxLength={20}
           />
-          <Text style={styles.fieldHint}>{displayName.length}/20 characters</Text>
+          {nameError
+            ? <Text style={styles.errorText}>{nameError}</Text>
+            : <Text style={styles.fieldHint}>{displayName.length}/20 characters</Text>
+          }
         </View>
 
         {/* Gender */}
@@ -406,14 +434,15 @@ export default function ProfileSetupScreen({ navigation }) {
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>Bio (optional)</Text>
           <TextInput
-            style={[styles.input, styles.bioInput]}
+            style={[styles.input, styles.bioInput, bioError && styles.inputError]}
             placeholder="Tell people something about you..."
             placeholderTextColor={colors.textMuted}
             value={bio}
-            onChangeText={setBio}
+            onChangeText={(t) => { setBio(t); setBioError(''); }}
             maxLength={100}
             multiline
           />
+          {bioError ? <Text style={styles.errorText}>{bioError}</Text> : null}
         </View>
 
         {/* CTA */}
@@ -465,6 +494,7 @@ const styles = StyleSheet.create({
   fieldHint: { color: colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'right' },
   inputError: { borderColor: '#FF4C4C' },
   errorText: { color: '#FF4C4C', fontSize: 12, marginTop: 6 },
+  moderationError: { color: '#FF4C4C', fontSize: 12, textAlign: 'center', marginBottom: 8 },
   ageHint: { color: colors.primary, fontSize: 12, marginTop: 6 },
   ageHintWarn: { color: '#FF9500' },
   input: {

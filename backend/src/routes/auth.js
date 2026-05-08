@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const { moderateText, moderateImageUrl } = require('../services/moderation');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'connectnow_secret_change_in_production';
 
@@ -91,12 +92,45 @@ router.post('/google', async (req, res) => {
 
 // POST /auth/profile/setup
 router.post('/profile/setup', authMiddleware, async (req, res) => {
-  const { displayName, gender, age, bio } = req.body;
+  const { displayName, gender, age, dob, bio, photoUrl } = req.body;
   const user = users.get(req.userId);
 
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  Object.assign(user, { displayName, gender, age, bio, profileComplete: true });
+  // ── Moderate display name ────────────────────────────────────────────────
+  if (displayName) {
+    const nameCheck = await moderateText(displayName);
+    if (!nameCheck.allowed) {
+      return res.status(422).json({
+        error: 'display_name_flagged',
+        message: nameCheck.reason || 'Your display name violates our community guidelines. Please choose a different name.',
+      });
+    }
+  }
+
+  // ── Moderate bio ─────────────────────────────────────────────────────────
+  if (bio && bio.trim().length > 0) {
+    const bioCheck = await moderateText(bio);
+    if (!bioCheck.allowed) {
+      return res.status(422).json({
+        error: 'bio_flagged',
+        message: bioCheck.reason || 'Your bio violates our community guidelines. Please revise it.',
+      });
+    }
+  }
+
+  // ── Moderate profile photo ───────────────────────────────────────────────
+  if (photoUrl) {
+    const photoCheck = await moderateImageUrl(photoUrl);
+    if (!photoCheck.allowed) {
+      return res.status(422).json({
+        error: 'photo_flagged',
+        message: photoCheck.reason || 'Your profile photo violates our community guidelines.',
+      });
+    }
+  }
+
+  Object.assign(user, { displayName, gender, age, dob, bio, photoUrl, profileComplete: true });
   users.set(user.id, user);
 
   res.json({ user });

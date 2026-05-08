@@ -18,6 +18,7 @@ const { router: notificationsRouter, fcmTokens } = require('./routes/notificatio
 const friendsRouter    = require('./routes/friends');
 const purchasesRouter  = require('./routes/purchases');
 const subscriptionsRouter = require('./routes/subscriptions');
+const { router: moderationRouter, reports: reportStore } = require('./routes/moderation');
 
 const app    = express();
 const server = http.createServer(app);
@@ -46,6 +47,7 @@ app.use('/notifications',   notificationsRouter);
 app.use('/friends',         friendsRouter);
 app.use('/purchases',       purchasesRouter);
 app.use('/subscriptions',   subscriptionsRouter);
+app.use('/moderation',      moderationRouter);
 
 // ─── FCM SEND HELPER ─────────────────────────────────────────────────────────
 // Uses firebase-admin if GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT is set.

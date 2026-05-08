@@ -11,6 +11,7 @@ import { useFollowStore } from '../../store/followStore';
 import { useFriendStore } from '../../store/friendStore';
 import { socketService } from '../../api/socket';
 import { REACTIONS, GIFTS, API_BASE_URL } from '../../constants';
+import ReportModal from '../../components/ReportModal';
 
 // Agora — graceful fallback if native module not linked yet
 let createAgoraRtcEngine, RtcSurfaceView, ChannelProfileType, ClientRoleType;
@@ -49,6 +50,7 @@ export default function VideoChatScreen({ navigation }) {
   const [latestGift, setLatestGift]         = useState(null);
   const [giftAnim]                          = useState(new Animated.Value(0));
   const [searchFadeAnim]                    = useState(new Animated.Value(0));
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   // Agora state
   const [remoteUid, setRemoteUid]   = useState(null);
@@ -318,30 +320,7 @@ export default function VideoChatScreen({ navigation }) {
     );
   };
 
-  const handleReport = () => {
-    Alert.alert('Report or Block', 'Choose an action', [
-      { text: 'Nudity / Sexual content', onPress: () => submitReport('nudity') },
-      { text: 'Harassment', onPress: () => submitReport('harassment') },
-      { text: 'Spam / Bot', onPress: () => submitReport('spam') },
-      { text: 'Underage', onPress: () => submitReport('underage') },
-      { text: 'Block User', style: 'destructive', onPress: handleBlock },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const submitReport = (reason) => {
-    if (currentMatch?.id) {
-      fetch(`${API_BASE_URL}/users/report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentMatch.id, reason, reporterId: user?.uid }),
-      }).catch(() => {});
-    }
-    Alert.alert('Reported', 'Thank you. We\'ll review this within 24 hours.', [
-      { text: 'Skip to next', onPress: handleSkip },
-      { text: 'Leave', onPress: handleEnd },
-    ]);
-  };
+  const handleReport = () => setReportModalVisible(true);
 
   const toggleMute = async () => {
     const next = !isMuted;
@@ -627,6 +606,16 @@ export default function VideoChatScreen({ navigation }) {
           </LinearGradient>
         </View>
       )}
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        reporterId={user?.uid}
+        reportedId={currentMatch?.id}
+        reportedName={currentMatch?.displayName}
+        sessionId={sessionIdRef.current}
+      />
     </View>
   );
 }
